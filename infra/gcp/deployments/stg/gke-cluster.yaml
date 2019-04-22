@@ -1,0 +1,32 @@
+imports:
+  - path: ../../templates/container/kubernetes-cluster.jinja
+  - path: ../../templates/iam/service-account.jinja
+
+resources:
+  - name: kubernetes-cluster
+    type: ../../templates/container/kubernetes-cluster.jinja
+    properties:
+      name: stg
+      description: Staging Kubernetes Engine cluster.
+      type: REGIONAL
+      network:
+        name: base-net
+        subnet: gke-stg-sn
+        region: europe-west1
+      nodePools:
+        - name: compute-pad-g1s
+          machineType: g1-small
+          imageType: cos_containerd
+          preemptible: true
+          autoscaling: true
+          maxNodeCount: 6
+
+outputs:
+  - name: cluster-name
+    value: $(ref.kubernetes-cluster.name)
+  - name: cluster-endpoint
+    value: $(ref.kubernetes-cluster.endpoint)
+  - name: cluster-traefik-lb-address
+    value: $(ref.kubernetes-cluster.traefik-lb-address)
+  - name: cluster-traefik-lb-dns
+    value: $(ref.kubernetes-cluster.traefik-lb-dns)
