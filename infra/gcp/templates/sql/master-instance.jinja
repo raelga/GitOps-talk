@@ -1,0 +1,203 @@
+
+resources:
+
+{# CloudSQL master instance #}
+
+- name: {{ name }}-master
+  type: sqladmin.v1beta4.instance
+  properties:
+    name: {{ name }}
+    backendType: {{ properties['backendType'] }}
+    instanceType: {{ properties['instanceType'] }}
+    databaseVersion: {{ properties['databaseVersion'] }}
+    region: {{ properties['region'] }}
+    settings:
+      {# General #}
+      tier: {{ properties['tier'] }}
+      activationPolicy: {{ properties['activationPolicy'] }}
+      pricingPlan: {{ properties['pricingPlan'] }}
+      {# Location #}
+      locationPreference:
+        zone: {{ properties['zone'] }}
+      {# Connectivity #}
+      ipConfiguration:
+        ipv4Enabled: {{ properties['publicIp'] }}
+        {% if properties['authorizedNetworks'] %}
+        authorizedNetworks:
+          {% for authorizedNetwork in properties['authorizedNetworks'] %}
+          - name: {{ authorizedNetwork.name }}
+            cidrBlock: {{ authorizedNetwork.cidrBlock }}
+          {% endfor %}
+        {% endif %}
+        {% if properties['privateIp'] %}
+        privateNetwork: {{ "projects/{}/global/networks/{}".format(
+          env['project'], properties['privateNetwork']
+        ) }}
+        {% endif %}
+      {# Storage #}
+      dataDiskSizeGb: {{ properties['dataDiskSizeGb'] }}
+      dataDiskType: {{ properties['dataDiskType'] }}
+      storageAutoResize: {{ properties['storageAutoResize'] }}
+      storageAutoResizeLimit: {{ properties['storageAutoResizeLimit'] }}
+      {# Database Flags #}
+      {% if properties['databaseFlags'] %}
+      databaseFlags: {{ properties['databaseFlags'] }}
+      {% endif %}
+      {# Maintenance #}
+      maintenanceWindow:
+        day: {{ properties['maintenanceWindowDay'] }}
+        hour: {{ properties['maintenanceWindowTime'] }}
+        updateTrack: {{ properties['maintenanceWindowUpdateTrack'] }}
+      {# Backup #}
+      {% if properties['backupEnabled'] %}
+      backupConfiguration:
+        enabled: {{ properties['backupEnabled'] }}
+        binaryLogEnabled: {{ properties['binaryLogEnabled'] }}
+        startTime: {{ properties['backupStartTime'] }}
+      {% endif %}
+
+{# Default root user deletion #}
+
+{% if properties['deleteDefaultRootUser'] %}
+- name: delete-{{ name }}-root-default-db-user
+  action: gcp-types/sqladmin-v1beta4:sql.users.delete
+  properties:
+    name: root
+    host: '%'
+    instance: $(ref.{{ name }}-master.name)
+  metadata:
+    runtimePolicy:
+      - CREATE
+    dependsOn:
+      - {{ name }}-master
+{% endif %}
+
+{# Google KMS for decrypting passwords #}
+
+- name: {{ name }}-kms-kr
+  type: gcp-types/cloudkms-v1:projects.locations.keyRings
+  properties:
+    parent: projects/{{ env["project"] }}/locations/{{ properties["region"] }}
+    keyRingId: {{ name }}-kms-kr
+
+- name: {{ name }}-users-kms-ck
+  type: gcp-types/cloudkms-v1:projects.locations.keyRings.cryptoKeys
+  properties:
+    parent: $(ref.{{ name }}-kms-kr.name)
+    cryptoKeyId: {{ name }}-users-kms-ck
+    purpose: ENCRYPT_DECRYPT
+  metadata:
+    dependsOn:
+      - {{ name }}-kms-kr
+
+{# Privileged users creations #}
+
+{% for admin in properties['admins'] %}
+
+{% if admin.pass %}
+- name: {{ name }}-{{ admin.name }}-db-user-pass
+  action: gcp-types/cloudkms-v1:cloudkms.projects.locations.keyRings.cryptoKeys.decrypt
+  properties:
+    name: $(ref.{{ name }}-users-kms-ck.name)
+    ciphertext: {{ admin.pass }}
+  metadata:
+    runtimePolicy:
+      - UPDATE_ON_CHANGE
+{% endif %}
+
+- name: {{ name }}-{{ admin.name }}-db-user
+  type: sqladmin.v1beta4.user
+  properties:
+    instance: $(ref.{{ name }}-master.name)
+    name: {{ admin.name }}
+    host: "{{ admin.host }}"
+  {% if admin.pass %}
+    password: $(ref.{{ name }}-{{ admin.name }}-db-user-pass.plaintext)
+  {% endif %}
+  metadata:
+    dependsOn:
+      - {{ name }}-master
+  {% if admin.pass %}
+      - {{ name }}-{{ admin.name }}-db-user-pass
+  {% endif %}
+  {% if properties['deleteDefaultRootUser'] %}
+      - delete-{{ name }}-root-default-db-user
+  {% endif %}
+  {% if loop.index != loop.length %}
+      - {{ name }}-{{ properties['admins'][loop.index]['name'] }}-db-user
+  {% endif %}
+{% endfor %}
+
+{# Databases #}
+
+{% for database in properties['databases'] %}
+- name: {{ name }}-{{ database['name'] }}-db
+  type: sqladmin.v1beta4.database
+  properties:
+    instance: $(ref.{{ name }}-master.name)
+    name: {{ database['name'] }}
+    charset: {{ database['charset'] }}
+  metadata:
+    dependsOn:
+      - {{ name }}-master
+  {% if properties['deleteDefaultRootUser'] %}
+      - delete-{{ name }}-root-default-db-user
+  {% endif %}
+  {% for admin in properties['admins'] %}
+      - {{ name }}-{{ admin.name }}-db-user
+  {% endfor %}
+  {% if loop.index != loop.length %}
+      - {{ name }}-{{ properties['databases'][loop.index]['name'] }}-db
+  {% endif %}
+{% endfor %}
+
+{# Imports #}
+
+{% for importContext in properties['imports'] %}
+
+{# If the bucket is not public, update the object ACL to allow the import #}
+{% if importContext.requiresACL %}
+- name: {{ importContext.bucket }}-{{ name }}-{{ importContext.name }}-import-acl
+  type: storage.v1.objectAccessControl
+  properties:
+    kind: storage#objectAccessControl
+    entity: user-$(ref.{{ name }}-master.serviceAccountEmailAddress)
+    bucket: {{ importContext.bucket }}
+    object: {{ importContext.file }}
+    role: READER
+  metadata:
+    dependsOn:
+      - {{ name }}-master
+{% endif %}
+
+- name: {{ name }}-{{ importContext.name }}-import
+  action: gcp-types/sqladmin-v1beta4:sql.instances.import
+  properties:
+    instance: $(ref.{{ name }}-master.name)
+    project: {{ env['project'] }}
+    importContext:
+      kind: sql#importContext
+      fileType: {{ importContext.type }}
+      uri: gs://{{ importContext.bucket }}/{{ importContext.file }}
+      {% if importContext.database %}
+      database: {{ importContext.database }}
+      {% endif %}
+  metadata:
+    runtimePolicy:
+      - CREATE
+    dependsOn:
+      - {{ name }}-master
+  {% if properties['deleteDefaultRootUser'] %}
+      - delete-{{ name }}-root-default-db-user
+  {% endif %}
+  {% for admin in properties['admins'] %}
+      - {{ name }}-{{ admin.name }}-db-user
+  {% endfor %}
+  {% for database in properties['databases'] %}
+      - {{ name }}-{{ database['name'] }}-db
+  {% endfor %}
+  {% if importContext.requiresACL %}
+      - {{ importContext.bucket }}-{{ name }}-{{ importContext.name }}-import-acl
+  {% endif %}
+
+{% endfor %}
