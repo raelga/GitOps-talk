@@ -1,0 +1,387 @@
+resources:
+
+- name: {{ properties.name }}
+{% if properties.type == 'REGIONAL' %}
+  type: gcp-types/container-v1:projects.locations.clusters
+  properties:
+    parent: {{ "projects/{}/locations/{}".format(env.project, properties.network.region) }}
+{% elif properties.type == 'LOCAL' %}
+  type: gcp-types/container-v1:projects.zones.clusters
+  properties:
+    parent: {{ "projects/{}/zones/{}".format(env.project, properties.network.zone) }}
+    zone: {{ properties.network.zone }}
+{% endif %}
+    cluster:
+      name: {{ properties.name }}
+      network: {{ properties.network.name }}
+      subnetwork: {{ properties.network.subnet }}
+{% if properties.type == 'REGIONAL' %}
+      locations:
+        - "{{ properties.network.region }}-b"
+        - "{{ properties.network.region }}-c"
+        - "{{ properties.network.region }}-d"
+{% elif properties.type == 'LOCAL' %}
+      locations:
+        - {{ properties.network.zone }}
+{% endif %}
+{% if properties.initialVersion %}
+      initialClusterVersion: {{ properties.initialVersion }}
+{% endif %}
+{% if properties.enableKubernetesAlpha %}
+      enableKubernetesAlpha: {{ properties.enableKubernetesAlpha }}
+{% endif %}
+      loggingService: {{ properties.loggingService }}
+      monitoringService: {{ properties.monitoringService }}
+      ipAllocationPolicy:
+        useIpAliases: true
+        clusterSecondaryRangeName: "pods"
+        servicesSecondaryRangeName: "services"
+      masterAuth:
+        clientCertificateConfig:
+          issueClientCertificate: false
+      masterAuthorizedNetworksConfig:
+        enabled: {{ properties.masterAuthorizedNetworks | length > 0 }}
+        {% if properties.masterAuthorizedNetworks %}
+        cidrBlocks:
+          {% for authorizedNetwork in properties.masterAuthorizedNetworks %}
+          - name: {{ authorizedNetwork.name }}
+            cidrBlock: {{ authorizedNetwork.cidrBlock }}
+          {% endfor %}
+        {% endif %}
+      addonsConfig:
+        httpLoadBalancing:
+          disabled: true
+        horizontalPodAutoscaling:
+          disabled: false
+        kubernetesDashboard:
+          disabled: true
+        networkPolicyConfig:
+          disabled: {{ not properties.networkPolicy }}
+      nodePools:
+        - name: initial-gke-node-pool
+          initialNodeCount: 0
+
+{% if properties.mode == 'UPDATE' %}
+
+{% for nodePool in properties.nodePools %}
+- name: {{ properties.name }}-{{ nodePool.name }}-gke-node-pool
+{% if properties.type == 'REGIONAL' %}
+  type: gcp-types/container-v1:projects.locations.clusters.nodePools
+  properties:
+    parent: {{ "projects/{}/locations/{}/clusters/{}".format(
+      env.project, properties.network.region, properties.name
+    )}}
+{% elif properties.type == 'LOCAL' %}
+  type: gcp-types/container-v1:projects.zones.clusters.nodePools
+  properties:
+    parent: {{ "projects/{}/zones/{}/clusters/{}".format(
+      env.project, properties.network.zone, properties.name
+    )}}
+    zone: {{ properties.network.zone }}
+{% endif %}
+    clusterId: {{ properties.name }}
+    nodePool:
+      name: {{ nodePool.name }}-pool
+    {% if nodePool.version or properties.initialVersion %}
+      version: {{ nodePool.version | default (properties.initialVersion) }}
+    {% endif %}
+      initialNodeCount: {{ nodePool.initialNodeCount }}
+    {% if nodePool.autoscaling %}
+      autoscaling:
+        enabled: true
+        minNodeCount: {{ nodePool.minNodeCount }}
+        maxNodeCount: {{ nodePool.maxNodeCount }}
+    {% endif %}
+      config:
+        machineType: {{ nodePool.machineType }}
+        imageType: {{ nodePool.imageType }}
+        diskType: {{ nodePool.diskType }}
+        diskSizeGb: {{ nodePool.diskSizeGb }}
+        preemptible: {{ nodePool.preemptible }}
+        oauthScopes:
+          - https://www.googleapis.com/auth/compute
+          - https://www.googleapis.com/auth/devstorage.read_only
+          - https://www.googleapis.com/auth/logging.write
+          - https://www.googleapis.com/auth/monitoring
+          - https://www.googleapis.com/auth/servicecontrol
+          - https://www.googleapis.com/auth/service.management.readonly
+        tags: {{ nodePool.tags }}
+        {% if nodePool.taints %}
+        taints:
+          {% for taint in nodePool.taints %}
+          - key: {{ taint.key }}
+            value: "{{ taint.value }}"
+            effect: {{ taint.effect }}
+          {% endfor %}
+        {% endif %}
+  metadata:
+    dependsOn:
+      - {{ properties.name }}
+  {% if loop.index != loop.length %}
+      - {{ properties.name }}-{{ properties['nodePools'][loop.index]['name'] }}-gke-node-pool
+  {% endif %}
+{% endfor %}
+
+{% endif %}
+
+{% set K8S_ENDPOINTS = {
+    'v1': 'api/v1',
+    'apps-v1beta1': 'apis/apps/v1beta1',
+    'extensions-v1beta1': 'apis/extensions/v1beta1',
+    'rbac-v1': 'apis/rbac.authorization.k8s.io/v1',
+  }
+%}
+
+{% for typeSuffix, endpoint in K8S_ENDPOINTS.iteritems() %}
+- name: {{ properties.name }}-k8s-type-{{ typeSuffix }}
+  type: deploymentmanager.v2beta.typeProvider
+  properties:
+    options:
+      validationOptions:
+        schemaValidation: IGNORE_WITH_WARNINGS
+      inputMappings:
+      - fieldName: name
+        location: PATH
+        methodMatch: ^(GET|DELETE|PUT)$
+        value: $.ifNull($.resource.properties.metadata.name, $.resource.name)
+      - fieldName: metadata.name
+        location: BODY
+        methodMatch: ^(PUT|POST)$
+        value: $.ifNull($.resource.properties.metadata.name, $.resource.name)
+      - fieldName: Authorization
+        location: HEADER
+        value: >
+          $.concat("Bearer ", $.googleOauth2AccessToken())
+    descriptorUrl: https://$(ref.{{ properties.name }}.endpoint)/swaggerapi/{{ endpoint }}
+  metadata:
+    dependsOn:
+      - {{ properties.name }}
+{% endfor %}
+
+{% set K8S_NS_COLLECTION = '/api/v1/namespaces' %}
+{% set K8S_CM_COLLECTION = '/api/v1/namespaces/{namespace}/configmaps' %}
+{% set K8S_DEPLOYMENTS_COLLECTION = '/apis/extensions/v1beta1/namespaces/{namespace}/deployments' %}
+{% set K8S_DS_COLLECTION = '/apis/extensions/v1beta1/namespaces/{namespace}/daemonsets' %}
+{% set K8S_SVC_COLLECTION = '/api/v1/namespaces/{namespace}/services' %}
+{% set K8S_SA_COLLECTION = '/api/v1/namespaces/{namespace}/serviceaccounts' %}
+{% set K8S_CR_COLLECTION = '/apis/rbac.authorization.k8s.io/v1/clusterroles' %}
+{% set K8S_CRB_COLLECTION = '/apis/rbac.authorization.k8s.io/v1/clusterrolebindings' %}
+
+{% if properties.network.nonMasqueradeCIDRs %}
+- name: {{ properties.name }}-k8s-ip-masq-agent-configmap
+  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_CM_COLLECTION }}
+  properties:
+    apiVersion: v1
+    kind: ConfigMap
+    namespace: kube-system
+    metadata:
+      name: ip-masq-agent
+      namespace: kube-system
+    data:
+      config: |
+        nonMasqueradeCIDRs:
+          - {{ properties.network.nonMasqueradeCIDRs }}
+        resyncInterval: 60s
+  metadata:
+    dependsOn:
+      - {{ properties.name }}-k8s-type-v1
+{% endif %}
+
+
+{% if properties.network.traefik %}
+
+- name: {{ properties.name }}-k8s-traefik-namespace
+  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_NS_COLLECTION }}
+  properties:
+    kind: Namespace
+    metadata:
+      name: traefik
+  metadata:
+    dependsOn:
+      - {{ properties.name }}-k8s-type-v1
+
+- name: {{ properties.name }}-k8s-traefik-sa
+  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_SA_COLLECTION }}
+  properties:
+    apiVersion: v1
+    kind: ServiceAccount
+    namespace: traefik
+    metadata:
+      name: traefik
+  metadata:
+    dependsOn:
+      - {{ properties.name }}-k8s-type-v1
+      - {{ properties.name }}-k8s-traefik-namespace
+
+- name: {{ properties.name }}-k8s-traefik-cr
+  type: {{ env.project }}/{{ properties.name }}-k8s-type-rbac-v1:{{ K8S_CR_COLLECTION }}
+  properties:
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    namespace: kube-system
+    metadata:
+      name: traefik
+    rules:
+      - apiGroups:
+          - ""
+        resources:
+          - services
+          - endpoints
+          - secrets
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - extensions
+        resources:
+          - ingresses
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - extensions
+        resources:
+          - ingresses/status
+        verbs:
+          - update
+  metadata:
+    dependsOn:
+      - {{ properties.name }}-k8s-type-rbac-v1
+
+- name: {{ properties.name }}-k8s-traefik-crb
+  type: {{ env.project }}/{{ properties.name }}-k8s-type-rbac-v1:{{ K8S_CRB_COLLECTION }}
+  properties:
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    namespace: kube-system
+    metadata:
+      name: traefik
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: traefik
+    subjects:
+    - kind: ServiceAccount
+      name: traefik
+      namespace: traefik
+  metadata:
+    dependsOn:
+      - {{ properties.name }}-k8s-type-rbac-v1
+      - {{ properties.name }}-k8s-traefik-sa
+      - {{ properties.name }}-k8s-traefik-cr
+
+- name: {{ properties.name }}-k8s-traefik-ds
+  type: {{ env.project }}/{{ properties.name }}-k8s-type-extensions-v1beta1:{{ K8S_DS_COLLECTION }}
+  properties:
+    kind: DaemonSet
+    apiVersion: extensions/v1beta1
+    namespace: traefik
+    metadata:
+      name: traefik
+      labels:
+        {{ properties.name }}-k8s-app: traefik
+    spec:
+      template:
+        metadata:
+          labels:
+            {{ properties.name }}-k8s-app: traefik
+            name: traefik
+        spec:
+          serviceAccountName: traefik
+          terminationGracePeriodSeconds: 60
+          containers:
+          - image: traefik
+            name: traefik
+            ports:
+            - name: http
+              containerPort: 80
+              hostPort: 80
+            - name: admin
+              containerPort: 8080
+            securityContext:
+              capabilities:
+                drop:
+                - ALL
+                add:
+                - NET_BIND_SERVICE
+            args:
+            - --api
+            - --kubernetes
+            - --logLevel=INFO
+  metadata:
+    dependsOn:
+      - {{ properties.name }}-k8s-type-extensions-v1beta1
+      - {{ properties.name }}-k8s-traefik-namespace
+      - {{ properties.name }}-k8s-traefik-sa
+
+- name: {{ name }}-gke-traefik-external-address
+  type: compute.v1.address
+  properties:
+    addressType: EXTERNAL
+    region: {{ properties.network.region }}
+
+- name: {{ properties.name }}-k8s-traefik-srv
+  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_SVC_COLLECTION }}
+  properties:
+    kind: Service
+    apiVersion: v1
+    namespace: traefik
+    metadata:
+      name: traefik
+    spec:
+      type: LoadBalancer
+      loadBalancerIP: $(ref.{{ name }}-gke-traefik-external-address.address)
+      selector:
+        {{ properties.name }}-k8s-app: traefik
+      ports:
+        - protocol: TCP
+          port: 80
+          name: web
+        - protocol: TCP
+          port: 8080
+          name: admin
+  metadata:
+    dependsOn:
+      - {{ properties.name }}-k8s-type-v1
+      - {{ name }}-gke-traefik-external-address
+      - {{ properties.name }}-k8s-traefik-namespace
+
+- name: {{ properties.name }}-k8s-traefik-srv-root-dns-rs
+  type: gcp-types/dns-v1:resourceRecordSets
+  properties:
+    name: "{{ properties.name }}.{{ properties.network.dnsZone.fqdn }}"
+    managedZone: {{ properties.network.dnsZone.name }}
+    records:
+    - type: A
+      ttl: 60
+      rrdatas:
+      - $(ref.{{ name }}-gke-traefik-external-address.address)
+
+- name: {{ properties.name }}-k8s-traefik-srv-wildcard-dns-rs
+  type: gcp-types/dns-v1:resourceRecordSets
+  properties:
+    name: "*.{{ properties.name }}.{{ properties.network.dnsZone.fqdn }}"
+    managedZone: {{ properties.network.dnsZone.name }}
+    records:
+    - type: A
+      ttl: 60
+      rrdatas:
+      - $(ref.{{ name }}-gke-traefik-external-address.address)
+
+{% endif %}
+
+outputs:
+  - name: project
+    value: {{ env.project }}
+  - name: name
+    value: $(ref.{{ properties.name }}.name)
+  - name: endpoint
+    value: $(ref.{{ properties.name }}.endpoint)
+  {% if properties.network.traefik %}
+  - name: traefik-lb-address
+    value: $(ref.{{ name }}-gke-traefik-external-address.address)
+  - name: traefik-lb-dns
+    value: {{ properties.name }}.{{ properties.network.dnsZone.fqdn }}
+  {% endif %}
