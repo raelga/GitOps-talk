@@ -1,0 +1,16 @@
+imports:
+  - path: ../../templates/storage/bucket.jinja
+
+resources:
+
+  - name: bucket
+    type: ../../templates/storage/bucket.jinja
+    properties:
+      name: dev-statics-gitops
+      websiteConfig:
+        enabled: true
+
+outputs:
+
+  - name: bucket
+    value: $(ref.bucket.name)
