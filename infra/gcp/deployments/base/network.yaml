@@ -1,0 +1,48 @@
+imports:
+  - path: ../../templates/compute/vpc-network.jinja
+
+resources:
+
+- name: base-network
+  type: ../../templates/compute/vpc-network.jinja
+  properties:
+    name: base
+  # Google Cloud Managed Services Range
+    google-managed-services-range: 10.50.240.0/20
+    subnets:
+  # Production environment subnets
+    # Production Google Compute Engine subnet
+      - name: gce-pro
+        range: 10.50.0.0/21
+    # Production Google Kubernetes Engine subnet
+      - name: gke-pro
+        range: 10.50.16.0/21
+        secondaryIpRanges:
+          - name: services
+            range: 10.50.24.0/21
+          - name: pods
+            range: 10.50.32.0/20
+  # Staging environments subnets
+    # Staging Google Compute Engine subnet
+      - name: gce-stg
+        range: 10.51.0.0/21
+    # Staging Google Kubernetes Engine subnet
+      - name: gke-stg
+        range: 10.51.16.0/21
+        secondaryIpRanges:
+          - name: services
+            range: 10.51.24.0/21
+          - name: pods
+            range: 10.51.32.0/20
+  # Development environments subnets
+    # Development Google Compute Engine subnet
+      - name: gce-dev
+        range: 10.52.0.0/21
+    # Development Google Kubernetes Engine subnet
+      - name: gke-dev
+        range: 10.52.16.0/21
+        secondaryIpRanges:
+          - name: services
+            range: 10.52.24.0/21
+          - name: pods
+            range: 10.52.32.0/20
