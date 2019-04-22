@@ -1,0 +1,7 @@
+resources:
+
+- name: gitops-zone
+  type: gcp-types/dns-v1:managedZones
+  properties:
+    description: Managed zone for gitops.gcp.rael.io.
+    dnsName: gitops.gcp.rael.io.
