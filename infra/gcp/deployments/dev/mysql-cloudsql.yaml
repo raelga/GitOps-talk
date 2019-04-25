@@ -1,0 +1,34 @@
+imports:
+  - path: ../../../templates/sql/master-instance.jinja
+
+configVersion: v1
+
+resources:
+  - name: mysql
+    type: ../../../templates/sql/master-instance.jinja
+    properties:
+      tier: db-f1-micro
+      dataDiskSizeGb: 15
+      binaryLogEnabled: false
+      publicIp: false
+      privateIp: true
+      privateNetwork: base-net
+      admins:
+        - name: hoppy
+          host: 0.0.0.0
+          pass: CiQAPjbphcRUQwrq2fxlObZEO/afafsfasdfxxxfxxxfxxxfxxx==
+      databases:
+        - name: awesome_app_1
+        - name: awesome_app_2
+      imports:
+        - name: awesome_app_1
+          requiresACL: true
+          bucket: dev-storage-gitops
+          file: sql/mysql/backups/awesome_app_1-initial.sql.gz
+outputs:
+  - name: connectionName
+    value: $(ref.mysql-master.connectionName)
+  - name: ipAddress
+    value: $(ref.mysql-master.ipAddresses[0].ipAddress)
+  - name: serviceAccountEmailAddress
+    value: $(ref.mysql-master.serviceAccountEmailAddress)
