@@ -18,6 +18,8 @@ function main() {
       gcp_update $BUCKET_FOLDER;;
     gcp_sync)
       gcp_sync $BUCKET_FOLDER;;
+    gcp_delete)
+      gcp_delete $BUCKET_FOLDER;;
     *)
       echo "Action ${ACTION} not implemented in provider ${PROVIDER:-}.";;
   esac;
@@ -35,13 +37,13 @@ function gcp_update() {
 
   BUCKET_SRC=${BUCKET_FOLDER}
   BUCKET_DST=$(basename ${BUCKET_SRC})
-  gsutil rsync -r -J -C -c ${BUCKET_SRC}/ gs://${BUCKET_DST}
+  gsutil rsync -R -J -C -c ${BUCKET_SRC}/ gs://${BUCKET_DST}
 
 #-C       If an error occurs, continue to attempt to copy the remaining files.
 #-c       Causes the rsync command to compute and compare checksums for files
 #         if the size of source and destination match.
 #-J       Applies gzip transport encoding to file uploads. T
-#-R, -r   Causes directories, buckets, and bucket subdirectories to be
+#-R       Causes directories, buckets, and bucket subdirectories to be
 #         synchronized recursively.
 
 }
@@ -52,15 +54,28 @@ function gcp_sync() {
 
   BUCKET_SRC=${BUCKET_FOLDER}
   BUCKET_DST=$(basename ${BUCKET_SRC})
-  gsutil rsync -r -J -C -c -d ${BUCKET_SRC}/ gs://${BUCKET_DST}
+  gsutil rsync -R -J -C -c -d ${BUCKET_SRC}/ gs://${BUCKET_DST}
 
 #-d       Delete extra files under dst_url not found under src_url.
 #-C       If an error occurs, continue to attempt to copy the remaining files.
 #-c       Causes the rsync command to compute and compare checksums for files
 #         if the size of source and destination match.
 #-J       Applies gzip transport encoding to file uploads. T
-#-R, -r   Causes directories, buckets, and bucket subdirectories to be
+#-R       Causes directories, buckets, and bucket subdirectories to be
 #         synchronized recursively.
+
+}
+
+function gcp_delete() {
+
+  gcp_config;
+
+  BUCKET_SRC=${BUCKET_FOLDER}
+  BUCKET_DST=$(basename ${BUCKET_SRC})
+  gsutil rm -R -f gs://${BUCKET_DST}
+
+#-f     Continues silently despite errors when removing multiple objects.
+#-R     Causes bucket or bucket subdirectory contents to be removed recursively.
 
 }
 
