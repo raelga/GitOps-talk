@@ -6,20 +6,18 @@ resources:
   - name: kubernetes-cluster
     type: ../../templates/container/kubernetes-cluster.jinja
     properties:
-      name: dev
-      description: Development Kubernetes Engine cluster.
-      type: LOCAL
+      type: REGIONAL
       network:
         name: base-net
-        subnet: gke-dev-sn
-        zone: europe-west1-b
+        subnet: gke-stg-sn
+        region: europe-west1
       nodePools:
         - name: compute-pad-g1s
           machineType: g1-small
           imageType: cos_containerd
           preemptible: true
           autoscaling: true
-          maxNodeCount: 5
+          maxNodeCount: 6
 
 outputs:
   - name: cluster-name

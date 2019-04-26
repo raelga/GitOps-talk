@@ -6,20 +6,18 @@ resources:
   - name: kubernetes-cluster
     type: ../../templates/container/kubernetes-cluster.jinja
     properties:
-      name: stg
-      description: Staging Kubernetes Engine cluster.
       type: REGIONAL
       network:
         name: base-net
-        subnet: gke-stg-sn
+        subnet: gke-pro-sn
         region: europe-west1
       nodePools:
         - name: compute-pad-g1s
           machineType: g1-small
           imageType: cos_containerd
-          preemptible: true
+          preemptible: false
           autoscaling: true
-          maxNodeCount: 6
+          maxNodeCount: 10
 
 outputs:
   - name: cluster-name

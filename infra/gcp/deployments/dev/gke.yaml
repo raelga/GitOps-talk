@@ -6,24 +6,21 @@ resources:
   - name: kubernetes-cluster
     type: ../../templates/container/kubernetes-cluster.jinja
     properties:
-      name: pro
-      description: Production Kubernetes Engine cluster.
-      type: REGIONAL
+      type: LOCAL
       network:
         name: base-net
-        subnet: gke-pro-sn
-        region: europe-west1
+        subnet: gke-dev-sn
+        zone: europe-west1-b
       nodePools:
-        - name: compute-pad-g1s
+        - name: gce-pad-g1s
           machineType: g1-small
-          imageType: cos_containerd
-          preemptible: true
-          autoscaling: true
-          maxNodeCount: 10
+          maxNodeCount: 5
 
 outputs:
   - name: cluster-name
     value: $(ref.kubernetes-cluster.name)
+  - name: cluster-location
+    value: $(ref.kubernetes-cluster.location)
   - name: cluster-endpoint
     value: $(ref.kubernetes-cluster.endpoint)
   - name: cluster-traefik-lb-address
