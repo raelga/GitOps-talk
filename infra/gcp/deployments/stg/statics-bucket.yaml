@@ -11,5 +11,8 @@ resources:
 
 outputs:
 
-  - name: bucket
+  - name: name
     value: $(ref.bucket.name)
+  - name: url
+    value: $(ref.bucket.url)
+
