@@ -1,6 +1,8 @@
+{% set CLUSTER_NAME = env['deployment'] %}
+
 resources:
 
-- name: {{ properties.name }}
+- name: {{ CLUSTER_NAME }}
 {% if properties.type == 'REGIONAL' %}
   type: gcp-types/container-v1:projects.locations.clusters
   properties:
@@ -12,7 +14,7 @@ resources:
     zone: {{ properties.network.zone }}
 {% endif %}
     cluster:
-      name: {{ properties.name }}
+      name: {{ CLUSTER_NAME }}
       network: {{ properties.network.name }}
       subnetwork: {{ properties.network.subnet }}
 {% if properties.type == 'REGIONAL' %}
@@ -63,23 +65,22 @@ resources:
 
 {% if properties.mode == 'UPDATE' %}
 
-{% for nodePool in properties.nodePools %}
-- name: {{ properties.name }}-{{ nodePool.name }}-gke-node-pool
+- name: {{ CLUSTER_NAME }}-{{ nodePool.name }}-gke-node-pool
 {% if properties.type == 'REGIONAL' %}
   type: gcp-types/container-v1:projects.locations.clusters.nodePools
   properties:
     parent: {{ "projects/{}/locations/{}/clusters/{}".format(
-      env.project, properties.network.region, properties.name
+      env.project, properties.network.region, CLUSTER_NAME
     )}}
 {% elif properties.type == 'LOCAL' %}
   type: gcp-types/container-v1:projects.zones.clusters.nodePools
   properties:
     parent: {{ "projects/{}/zones/{}/clusters/{}".format(
-      env.project, properties.network.zone, properties.name
+      env.project, properties.network.zone, CLUSTER_NAME
     )}}
     zone: {{ properties.network.zone }}
 {% endif %}
-    clusterId: {{ properties.name }}
+    clusterId: {{ CLUSTER_NAME }}
     nodePool:
       name: {{ nodePool.name }}-pool
     {% if nodePool.version or properties.initialVersion %}
@@ -116,13 +117,11 @@ resources:
         {% endif %}
   metadata:
     dependsOn:
-      - {{ properties.name }}
+      - {{ CLUSTER_NAME }}
   {% if loop.index != loop.length %}
-      - {{ properties.name }}-{{ properties['nodePools'][loop.index]['name'] }}-gke-node-pool
+      - {{ CLUSTER_NAME }}-{{ properties['nodePools'][loop.index]['name'] }}-gke-node-pool
   {% endif %}
 {% endfor %}
-
-{% endif %}
 
 {% set K8S_ENDPOINTS = {
     'v1': 'api/v1',
@@ -133,7 +132,7 @@ resources:
 %}
 
 {% for typeSuffix, endpoint in K8S_ENDPOINTS.iteritems() %}
-- name: {{ properties.name }}-k8s-type-{{ typeSuffix }}
+- name: {{ CLUSTER_NAME }}-k8s-type-{{ typeSuffix }}
   type: deploymentmanager.v2beta.typeProvider
   properties:
     options:
@@ -152,10 +151,10 @@ resources:
         location: HEADER
         value: >
           $.concat("Bearer ", $.googleOauth2AccessToken())
-    descriptorUrl: https://$(ref.{{ properties.name }}.endpoint)/swaggerapi/{{ endpoint }}
+    descriptorUrl: https://$(ref.{{ CLUSTER_NAME }}.endpoint)/swaggerapi/{{ endpoint }}
   metadata:
     dependsOn:
-      - {{ properties.name }}
+      - {{ CLUSTER_NAME }}
 {% endfor %}
 
 {% set K8S_NS_COLLECTION = '/api/v1/namespaces' %}
@@ -168,8 +167,8 @@ resources:
 {% set K8S_CRB_COLLECTION = '/apis/rbac.authorization.k8s.io/v1/clusterrolebindings' %}
 
 {% if properties.network.nonMasqueradeCIDRs %}
-- name: {{ properties.name }}-k8s-ip-masq-agent-configmap
-  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_CM_COLLECTION }}
+- name: {{ CLUSTER_NAME }}-k8s-ip-masq-agent-configmap
+  type: {{ env.project }}/{{ CLUSTER_NAME }}-k8s-type-v1:{{ K8S_CM_COLLECTION }}
   properties:
     apiVersion: v1
     kind: ConfigMap
@@ -184,24 +183,24 @@ resources:
         resyncInterval: 60s
   metadata:
     dependsOn:
-      - {{ properties.name }}-k8s-type-v1
+      - {{ CLUSTER_NAME }}-k8s-type-v1
 {% endif %}
 
 
 {% if properties.network.traefik %}
 
-- name: {{ properties.name }}-k8s-traefik-namespace
-  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_NS_COLLECTION }}
+- name: {{ CLUSTER_NAME }}-k8s-traefik-namespace
+  type: {{ env.project }}/{{ CLUSTER_NAME }}-k8s-type-v1:{{ K8S_NS_COLLECTION }}
   properties:
     kind: Namespace
     metadata:
       name: traefik
   metadata:
     dependsOn:
-      - {{ properties.name }}-k8s-type-v1
+      - {{ CLUSTER_NAME }}-k8s-type-v1
 
-- name: {{ properties.name }}-k8s-traefik-sa
-  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_SA_COLLECTION }}
+- name: {{ CLUSTER_NAME }}-k8s-traefik-sa
+  type: {{ env.project }}/{{ CLUSTER_NAME }}-k8s-type-v1:{{ K8S_SA_COLLECTION }}
   properties:
     apiVersion: v1
     kind: ServiceAccount
@@ -210,11 +209,11 @@ resources:
       name: traefik
   metadata:
     dependsOn:
-      - {{ properties.name }}-k8s-type-v1
-      - {{ properties.name }}-k8s-traefik-namespace
+      - {{ CLUSTER_NAME }}-k8s-type-v1
+      - {{ CLUSTER_NAME }}-k8s-traefik-namespace
 
-- name: {{ properties.name }}-k8s-traefik-cr
-  type: {{ env.project }}/{{ properties.name }}-k8s-type-rbac-v1:{{ K8S_CR_COLLECTION }}
+- name: {{ CLUSTER_NAME }}-k8s-traefik-cr
+  type: {{ env.project }}/{{ CLUSTER_NAME }}-k8s-type-rbac-v1:{{ K8S_CR_COLLECTION }}
   properties:
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRole
@@ -248,10 +247,10 @@ resources:
           - update
   metadata:
     dependsOn:
-      - {{ properties.name }}-k8s-type-rbac-v1
+      - {{ CLUSTER_NAME }}-k8s-type-rbac-v1
 
-- name: {{ properties.name }}-k8s-traefik-crb
-  type: {{ env.project }}/{{ properties.name }}-k8s-type-rbac-v1:{{ K8S_CRB_COLLECTION }}
+- name: {{ CLUSTER_NAME }}-k8s-traefik-crb
+  type: {{ env.project }}/{{ CLUSTER_NAME }}-k8s-type-rbac-v1:{{ K8S_CRB_COLLECTION }}
   properties:
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
@@ -268,12 +267,12 @@ resources:
       namespace: traefik
   metadata:
     dependsOn:
-      - {{ properties.name }}-k8s-type-rbac-v1
-      - {{ properties.name }}-k8s-traefik-sa
-      - {{ properties.name }}-k8s-traefik-cr
+      - {{ CLUSTER_NAME }}-k8s-type-rbac-v1
+      - {{ CLUSTER_NAME }}-k8s-traefik-sa
+      - {{ CLUSTER_NAME }}-k8s-traefik-cr
 
-- name: {{ properties.name }}-k8s-traefik-ds
-  type: {{ env.project }}/{{ properties.name }}-k8s-type-extensions-v1beta1:{{ K8S_DS_COLLECTION }}
+- name: {{ CLUSTER_NAME }}-k8s-traefik-ds
+  type: {{ env.project }}/{{ CLUSTER_NAME }}-k8s-type-extensions-v1beta1:{{ K8S_DS_COLLECTION }}
   properties:
     kind: DaemonSet
     apiVersion: extensions/v1beta1
@@ -281,12 +280,12 @@ resources:
     metadata:
       name: traefik
       labels:
-        {{ properties.name }}-k8s-app: traefik
+        {{ CLUSTER_NAME }}-k8s-app: traefik
     spec:
       template:
         metadata:
           labels:
-            {{ properties.name }}-k8s-app: traefik
+            {{ CLUSTER_NAME }}-k8s-app: traefik
             name: traefik
         spec:
           serviceAccountName: traefik
@@ -312,18 +311,18 @@ resources:
             - --logLevel=INFO
   metadata:
     dependsOn:
-      - {{ properties.name }}-k8s-type-extensions-v1beta1
-      - {{ properties.name }}-k8s-traefik-namespace
-      - {{ properties.name }}-k8s-traefik-sa
+      - {{ CLUSTER_NAME }}-k8s-type-extensions-v1beta1
+      - {{ CLUSTER_NAME }}-k8s-traefik-namespace
+      - {{ CLUSTER_NAME }}-k8s-traefik-sa
 
-- name: {{ name }}-gke-traefik-external-address
+- name: {{ CLUSTER_NAME }}-traefik-external-address
   type: compute.v1.address
   properties:
     addressType: EXTERNAL
     region: {{ properties.network.region }}
 
-- name: {{ properties.name }}-k8s-traefik-srv
-  type: {{ env.project }}/{{ properties.name }}-k8s-type-v1:{{ K8S_SVC_COLLECTION }}
+- name: {{ CLUSTER_NAME }}-k8s-traefik-srv
+  type: {{ env.project }}/{{ CLUSTER_NAME }}-k8s-type-v1:{{ K8S_SVC_COLLECTION }}
   properties:
     kind: Service
     apiVersion: v1
@@ -332,7 +331,7 @@ resources:
       name: traefik
     spec:
       type: LoadBalancer
-      loadBalancerIP: $(ref.{{ name }}-gke-traefik-external-address.address)
+      loadBalancerIP: $(ref.{{ CLUSTER_NAME }}-traefik-external-address.address)
       selector:
         {{ properties.name }}-k8s-app: traefik
       ports:
@@ -344,31 +343,31 @@ resources:
           name: admin
   metadata:
     dependsOn:
-      - {{ properties.name }}-k8s-type-v1
-      - {{ name }}-gke-traefik-external-address
-      - {{ properties.name }}-k8s-traefik-namespace
+      - {{ CLUSTER_NAME }}-k8s-type-v1
+      - {{ CLUSTER_NAME }}-traefik-external-address
+      - {{ CLUSTER_NAME }}-k8s-traefik-namespace
 
-- name: {{ properties.name }}-k8s-traefik-srv-root-dns-rs
+- name: {{ CLUSTER_NAME }}-k8s-traefik-srv-root-dns-rs
   type: gcp-types/dns-v1:resourceRecordSets
   properties:
-    name: "{{ properties.name }}.{{ properties.network.dnsZone.fqdn }}"
+    name: "{{ CLUSTER_NAME }}.{{ properties.network.dnsZone.fqdn }}"
     managedZone: {{ properties.network.dnsZone.name }}
     records:
     - type: A
       ttl: 60
       rrdatas:
-      - $(ref.{{ name }}-gke-traefik-external-address.address)
+      - $(ref.{{ CLUSTER_NAME }}-traefik-external-address.address)
 
-- name: {{ properties.name }}-k8s-traefik-srv-wildcard-dns-rs
+- name: {{ CLUSTER_NAME }}-k8s-traefik-srv-wildcard-dns-rs
   type: gcp-types/dns-v1:resourceRecordSets
   properties:
-    name: "*.{{ properties.name }}.{{ properties.network.dnsZone.fqdn }}"
+    name: "*.{{ CLUSTER_NAME }}.{{ properties.network.dnsZone.fqdn }}"
     managedZone: {{ properties.network.dnsZone.name }}
     records:
     - type: A
       ttl: 60
       rrdatas:
-      - $(ref.{{ name }}-gke-traefik-external-address.address)
+      - $(ref.{{ CLUSTER_NAME }}-traefik-external-address.address)
 
 {% endif %}
 
@@ -376,12 +375,14 @@ outputs:
   - name: project
     value: {{ env.project }}
   - name: name
-    value: $(ref.{{ properties.name }}.name)
+    value: $(ref.{{ CLUSTER_NAME }}.name)
   - name: endpoint
-    value: $(ref.{{ properties.name }}.endpoint)
+    value: $(ref.{{ CLUSTER_NAME }}.endpoint)
+  - name: location
+{% endif %}
   {% if properties.network.traefik %}
   - name: traefik-lb-address
-    value: $(ref.{{ name }}-gke-traefik-external-address.address)
+    value: $(ref.{{ CLUSTER_NAME }}-traefik-external-address.address)
   - name: traefik-lb-dns
-    value: {{ properties.name }}.{{ properties.network.dnsZone.fqdn }}
+    value: {{ CLUSTER_NAME }}.{{ properties.network.dnsZone.fqdn }}
   {% endif %}

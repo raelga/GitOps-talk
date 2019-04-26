@@ -5,19 +5,12 @@ info:
   version: 1.0
 
 required:
-- name
 - network
 - nodePools
 
 additionalProperties: false
 
 properties:
-
-  name:
-    type: string
-    description: >
-      The name of this cluster.
-    pattern: ^[a-zA-Z0-9]([-a-zA-Z0-9]+[-a-zA-Z0-9]$)?
 
   description:
     type: string
