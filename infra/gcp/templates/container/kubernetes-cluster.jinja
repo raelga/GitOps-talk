@@ -36,8 +36,8 @@ resources:
       monitoringService: {{ properties.monitoringService }}
       ipAllocationPolicy:
         useIpAliases: true
-        clusterSecondaryRangeName: "pods"
-        servicesSecondaryRangeName: "services"
+        {# clusterSecondaryRangeName: "pods" #}
+        {# servicesSecondaryRangeName: "services" #}
       masterAuth:
         clientCertificateConfig:
           issueClientCertificate: false
