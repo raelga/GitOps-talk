@@ -192,7 +192,7 @@ properties:
           type: number
           description: >
             Minimum number of nodes for the Node Pool.
-          default: 2
+          default: 5
           minimum: 1
           maximum: 20
         machineType:
