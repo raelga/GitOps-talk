@@ -280,12 +280,12 @@ resources:
     metadata:
       name: traefik
       labels:
-        {{ CLUSTER_NAME }}-k8s-app: traefik
+        k8s-app: traefik
     spec:
       template:
         metadata:
           labels:
-            {{ CLUSTER_NAME }}-k8s-app: traefik
+            k8s-app: traefik
             name: traefik
         spec:
           serviceAccountName: traefik
@@ -333,7 +333,7 @@ resources:
       type: LoadBalancer
       loadBalancerIP: $(ref.{{ CLUSTER_NAME }}-traefik-external-address.address)
       selector:
-        {{ properties.name }}-k8s-app: traefik
+        k8s-app: traefik
       ports:
         - protocol: TCP
           port: 80
