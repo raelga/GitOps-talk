@@ -379,6 +379,10 @@ outputs:
   - name: endpoint
     value: $(ref.{{ CLUSTER_NAME }}.endpoint)
   - name: location
+{% if properties.type == 'REGIONAL' %}
+    value: {{ properties.network.region }}
+{% elif properties.type == 'LOCAL' %}
+    value: {{ properties.network.zone }}
 {% endif %}
   {% if properties.network.traefik %}
   - name: traefik-lb-address
