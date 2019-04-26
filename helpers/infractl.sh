@@ -20,6 +20,8 @@ function main() {
       gcp_diff $MANIFEST;;
     gcp_apply)
       gcp_apply $MANIFEST;;
+    gcp_delete)
+      gcp_delete $MANIFEST;;
     *)
       echo "Action ${ACTION} not implemented in provider ${PROVIDER:-}.";;
   esac;
@@ -47,15 +49,15 @@ function gcp_diff() {
   gcp_config;
   gcp_deployment_config;
 
-    info "Previewing ${DEPLOYMENT_NAME} deployment with ${DEPLOYMENT_CONF}.";
-    gcloud deployment-manager deployments \
-      update ${DEPLOYMENT_NAME} --config ${DEPLOYMENT_CONF} --preview \
-      --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
-      || error "Previewing of ${DEPLOYMENT_NAME} failed.";
+  info "Previewing ${DEPLOYMENT_NAME} deployment with ${DEPLOYMENT_CONF}.";
+  gcloud deployment-manager deployments \
+    update ${DEPLOYMENT_NAME} --config ${DEPLOYMENT_CONF} --preview \
+    --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+    || error "Previewing of ${DEPLOYMENT_NAME} failed.";
 
-    info "Canceling ${DEPLOYMENT_NAME} deployment preview.";
-    gcloud deployment-manager deployments cancel-preview ${DEPLOYMENT_NAME} \
-      || error "Previewing of ${DEPLOYMENT_NAME} failed.";
+  info "Canceling ${DEPLOYMENT_NAME} deployment preview.";
+  gcloud deployment-manager deployments cancel-preview ${DEPLOYMENT_NAME} \
+    || error "Previewing of ${DEPLOYMENT_NAME} failed.";
 
 }
 
@@ -83,6 +85,17 @@ function gcp_apply() {
       update ${DEPLOYMENT_NAME} \
       --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
       || error "Update of ${DEPLOYMENT_NAME} failed.";
+
+}
+
+function gcp_delete() {
+
+  gcp_config;
+  gcp_deployment_config;
+
+  gcloud deployment-manager deployments delete ${DEPLOYMENT_NAME} --quiet \
+    && info "Deployment ${DEPLOYMENT_NAME} deleted." \
+    || error "Unable to delete ${DEPLOYMENT_NAME}.";
 
 }
 
