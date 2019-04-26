@@ -6,7 +6,6 @@ resources:
   - name: bucket
     type: ../../templates/storage/bucket.jinja
     properties:
-      name: stg-statics-gitops
       websiteConfig:
         enabled: true
 

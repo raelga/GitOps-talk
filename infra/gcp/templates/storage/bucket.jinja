@@ -1,6 +1,8 @@
+{% set BUCKET_NAME = env['deployment'] %}
+
 resources:
 
-  - name: {{ properties['name'] }}
+  - name: {{ BUCKET_NAME }}
     type: storage.v1.bucket
     properties:
       storageClass: {{ properties['storageClass']  }}
@@ -14,10 +16,10 @@ resources:
         notFoundPage: {{ properties["websiteConfig"].notFoundPage }}
       {% endif %}
 
-  - name: {{ properties['name'] }}-iam-policy
+  - name: {{ BUCKET_NAME }}-iam-policy
     action: gcp-types/storage-v1:storage.buckets.setIamPolicy
     properties:
-      bucket: {{ properties['name'] }}
+      bucket: {{ BUCKET_NAME }}
       project: {{ env.project }}
       bindings:
         - role: roles/storage.admin
@@ -43,7 +45,7 @@ resources:
         {% endfor %}
     metadata:
       dependsOn:
-        - {{ properties['name'] }}
+        - {{ BUCKET_NAME }}
 
 {% if not properties['bucketPolicyOnly'] %}
 {% for ac in properties['acl'] %}
@@ -52,11 +54,11 @@ resources:
     properties:
       entity: {{ ac.entity }}
       kind: storage#bucketAccessControl
-      bucket: {{ properties['name'] }}
+      bucket: {{ BUCKET_NAME }}
       role: {{ ac.role }}
     metadata:
       dependsOn:
-        - {{ properties['name'] }}
+        - {{ BUCKET_NAME }}
   {% if loop.index != loop.length %}
         - {{ properties['acl'][loop.index]['name'] }}-acl
   {% endif %}
@@ -66,4 +68,6 @@ resources:
 outputs:
 
 - name: name
-  value: {{ properties['name'] }}
+  value: {{ BUCKET_NAME }}
+- name: url
+  value: https://storage.googleapis.com/{{ BUCKET_NAME }}
