@@ -309,8 +309,12 @@ resources:
             - name: http
               containerPort: 80
               hostPort: 80
+            - name: https
+              containerPort: 443
+              hostPort: 443
             - name: admin
               containerPort: 8080
+              hostPort: 8080
             securityContext:
               capabilities:
                 drop:
@@ -348,12 +352,18 @@ resources:
       selector:
         k8s-app: traefik
       ports:
-        - protocol: TCP
+        - name: web
+          protocol: TCP
           port: 80
-          name: web
-        - protocol: TCP
+          targetPort: 80
+        - name: websecure
+          protocol: TCP
+          port: 443
+          targetPort: 443
+        - name: admin
+          protocol: TCP
           port: 8080
-          name: admin
+          targetPort: 8080
   metadata:
     dependsOn:
       - {{ CLUSTER_NAME }}-k8s-type-v1
