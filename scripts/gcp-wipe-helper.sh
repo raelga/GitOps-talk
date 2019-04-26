@@ -5,4 +5,4 @@
 # https://issuetracker.google.com/issues/131072617
 #
 gcloud compute networks delete base-net
-gcloud deployment-manager deployments delete networks --delete-policy abandon
+gcloud deployment-manager deployments delete base-network --delete-policy abandon
