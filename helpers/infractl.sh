@@ -16,6 +16,8 @@ function main() {
   check;
 
   case ${PROVIDER:-}_${ACTION} in
+    gcp_diff)
+      gcp_diff $MANIFEST;;
     gcp_apply)
       gcp_apply $MANIFEST;;
     *)
@@ -39,6 +41,21 @@ function gcp_deployment_config() {
   test -z ${PREFIX} || DEPLOYMENT_NAME=${PREFIX}-${DEPLOYMENT_NAME};
 
 }
+
+function gcp_diff() {
+
+  gcp_config;
+  gcp_deployment_config;
+
+    info "Previewing ${DEPLOYMENT_NAME} deployment with ${DEPLOYMENT_CONF}.";
+    gcloud deployment-manager deployments \
+      update ${DEPLOYMENT_NAME} --config ${DEPLOYMENT_CONF} --preview \
+      --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+      || error "Previewing of ${DEPLOYMENT_NAME} failed.";
+
+    info "Canceling ${DEPLOYMENT_NAME} deployment preview.";
+    gcloud deployment-manager deployments cancel-preview ${DEPLOYMENT_NAME} \
+      || error "Previewing of ${DEPLOYMENT_NAME} failed.";
 
 }
 
