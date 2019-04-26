@@ -27,14 +27,22 @@ function check() {
   test -f ${MANIFEST:-}   || error "MANIFEST file \"${MANIFEST:-}\" not found.";
 }
 
-function gcp_apply() {
-
-  gcp_config;
+function gcp_deployment_config() {
 
   DEPLOYMENT_CONF=${MANIFEST}
   DEPLOYMENT_FILE=$(basename ${DEPLOYMENT_CONF})
   DEPLOYMENT_PATH=$(dirname ${DEPLOYMENT_CONF})
   DEPLOYMENT_NAME=$(basename ${DEPLOYMENT_PATH})-${DEPLOYMENT_FILE%.*}
+
+
+}
+
+}
+
+function gcp_apply() {
+
+  gcp_config;
+  gcp_deployment_config;
 
   gcloud deployment-manager deployments describe ${DEPLOYMENT_NAME} \
     && info "Deployment ${DEPLOYMENT_NAME} already exists." \
@@ -43,6 +51,7 @@ function gcp_apply() {
       gcloud deployment-manager deployments \
         create ${DEPLOYMENT_NAME} --config <(echo "resources:");
     }
+
     info "Previewing ${DEPLOYMENT_NAME} deployment with ${DEPLOYMENT_CONF}."
     gcloud deployment-manager deployments \
       update ${DEPLOYMENT_NAME} --config ${DEPLOYMENT_CONF} --preview \
