@@ -1,12 +1,13 @@
+{% set SQL_NAME = env['deployment'] %}
 
 resources:
 
 {# CloudSQL master instance #}
 
-- name: {{ name }}-master
+- name: {{ SQL_NAME }}-master
   type: sqladmin.v1beta4.instance
   properties:
-    name: {{ name }}
+    name: {{ SQL_NAME }}
     backendType: {{ properties['backendType'] }}
     instanceType: {{ properties['instanceType'] }}
     databaseVersion: {{ properties['databaseVersion'] }}
@@ -59,95 +60,95 @@ resources:
 {# Default root user deletion #}
 
 {% if properties['deleteDefaultRootUser'] %}
-- name: delete-{{ name }}-root-default-db-user
+- name: delete-{{ SQL_NAME }}-root-default-db-user
   action: gcp-types/sqladmin-v1beta4:sql.users.delete
   properties:
     name: root
     host: '%'
-    instance: $(ref.{{ name }}-master.name)
+    instance: $(ref.{{ SQL_NAME }}-master.name)
   metadata:
     runtimePolicy:
       - CREATE
     dependsOn:
-      - {{ name }}-master
+      - {{ SQL_NAME }}-master
 {% endif %}
 
 {# Google KMS for decrypting passwords #}
 
-- name: {{ name }}-kms-kr
+- name: {{ SQL_NAME }}-kms-kr
   type: gcp-types/cloudkms-v1:projects.locations.keyRings
   properties:
     parent: projects/{{ env["project"] }}/locations/{{ properties["region"] }}
-    keyRingId: {{ name }}-kms-kr
+    keyRingId: {{ SQL_NAME }}-kms-kr
 
-- name: {{ name }}-users-kms-ck
+- name: {{ SQL_NAME }}-users-kms-ck
   type: gcp-types/cloudkms-v1:projects.locations.keyRings.cryptoKeys
   properties:
-    parent: $(ref.{{ name }}-kms-kr.name)
-    cryptoKeyId: {{ name }}-users-kms-ck
+    parent: $(ref.{{ SQL_NAME }}-kms-kr.name)
+    cryptoKeyId: {{ SQL_NAME }}-users-kms-ck
     purpose: ENCRYPT_DECRYPT
   metadata:
     dependsOn:
-      - {{ name }}-kms-kr
+      - {{ SQL_NAME }}-kms-kr
 
 {# Privileged users creations #}
 
 {% for admin in properties['admins'] %}
 
 {% if admin.pass %}
-- name: {{ name }}-{{ admin.name }}-db-user-pass
+- name: {{ SQL_NAME }}-{{ admin.name }}-db-user-pass
   action: gcp-types/cloudkms-v1:cloudkms.projects.locations.keyRings.cryptoKeys.decrypt
   properties:
-    name: $(ref.{{ name }}-users-kms-ck.name)
+    name: $(ref.{{ SQL_NAME }}-users-kms-ck.name)
     ciphertext: {{ admin.pass }}
   metadata:
     runtimePolicy:
       - UPDATE_ON_CHANGE
 {% endif %}
 
-- name: {{ name }}-{{ admin.name }}-db-user
+- name: {{ SQL_NAME }}-{{ admin.name }}-db-user
   type: sqladmin.v1beta4.user
   properties:
-    instance: $(ref.{{ name }}-master.name)
+    instance: $(ref.{{ SQL_NAME }}-master.name)
     name: {{ admin.name }}
     host: "{{ admin.host }}"
   {% if admin.pass %}
-    password: $(ref.{{ name }}-{{ admin.name }}-db-user-pass.plaintext)
+    password: $(ref.{{ SQL_NAME }}-{{ admin.name }}-db-user-pass.plaintext)
   {% endif %}
   metadata:
     dependsOn:
-      - {{ name }}-master
+      - {{ SQL_NAME }}-master
   {% if admin.pass %}
-      - {{ name }}-{{ admin.name }}-db-user-pass
+      - {{ SQL_NAME }}-{{ admin.name }}-db-user-pass
   {% endif %}
   {% if properties['deleteDefaultRootUser'] %}
-      - delete-{{ name }}-root-default-db-user
+      - delete-{{ SQL_NAME }}-root-default-db-user
   {% endif %}
   {% if loop.index != loop.length %}
-      - {{ name }}-{{ properties['admins'][loop.index]['name'] }}-db-user
+      - {{ SQL_NAME }}-{{ properties['admins'][loop.index]['name'] }}-db-user
   {% endif %}
 {% endfor %}
 
 {# Databases #}
 
 {% for database in properties['databases'] %}
-- name: {{ name }}-{{ database['name'] }}-db
+- name: {{ SQL_NAME }}-{{ database['name'] }}-db
   type: sqladmin.v1beta4.database
   properties:
-    instance: $(ref.{{ name }}-master.name)
+    instance: $(ref.{{ SQL_NAME }}-master.name)
     name: {{ database['name'] }}
     charset: {{ database['charset'] }}
   metadata:
     dependsOn:
-      - {{ name }}-master
+      - {{ SQL_NAME }}-master
   {% if properties['deleteDefaultRootUser'] %}
-      - delete-{{ name }}-root-default-db-user
+      - delete-{{ SQL_NAME }}-root-default-db-user
   {% endif %}
   {% for admin in properties['admins'] %}
-      - {{ name }}-{{ admin.name }}-db-user
+      - {{ SQL_NAME }}-{{ admin.name }}-db-user
   {% endfor %}
   {% if loop.index != loop.length %}
-      - {{ name }}-{{ properties['databases'][loop.index]['name'] }}-db
+      - {{ SQL_NAME }}-{{ properties['databases'][loop.index]['name'] }}-db
   {% endif %}
 {% endfor %}
 
@@ -157,23 +158,23 @@ resources:
 
 {# If the bucket is not public, update the object ACL to allow the import #}
 {% if importContext.requiresACL %}
-- name: {{ importContext.bucket }}-{{ name }}-{{ importContext.name }}-import-acl
+- name: {{ importContext.bucket }}-{{ SQL_NAME }}-{{ importContext.name }}-import-acl
   type: storage.v1.objectAccessControl
   properties:
     kind: storage#objectAccessControl
-    entity: user-$(ref.{{ name }}-master.serviceAccountEmailAddress)
+    entity: user-$(ref.{{ SQL_NAME }}-master.serviceAccountEmailAddress)
     bucket: {{ importContext.bucket }}
     object: {{ importContext.file }}
     role: READER
   metadata:
     dependsOn:
-      - {{ name }}-master
+      - {{ SQL_NAME }}-master
 {% endif %}
 
-- name: {{ name }}-{{ importContext.name }}-import
+- name: {{ SQL_NAME }}-{{ importContext.name }}-import
   action: gcp-types/sqladmin-v1beta4:sql.instances.import
   properties:
-    instance: $(ref.{{ name }}-master.name)
+    instance: $(ref.{{ SQL_NAME }}-master.name)
     project: {{ env['project'] }}
     importContext:
       kind: sql#importContext
@@ -186,18 +187,18 @@ resources:
     runtimePolicy:
       - CREATE
     dependsOn:
-      - {{ name }}-master
+      - {{ SQL_NAME }}-master
   {% if properties['deleteDefaultRootUser'] %}
-      - delete-{{ name }}-root-default-db-user
+      - delete-{{ SQL_NAME }}-root-default-db-user
   {% endif %}
   {% for admin in properties['admins'] %}
-      - {{ name }}-{{ admin.name }}-db-user
+      - {{ SQL_NAME }}-{{ admin.name }}-db-user
   {% endfor %}
   {% for database in properties['databases'] %}
-      - {{ name }}-{{ database['name'] }}-db
+      - {{ SQL_NAME }}-{{ database['name'] }}-db
   {% endfor %}
   {% if importContext.requiresACL %}
-      - {{ importContext.bucket }}-{{ name }}-{{ importContext.name }}-import-acl
+      - {{ importContext.bucket }}-{{ SQL_NAME }}-{{ importContext.name }}-import-acl
   {% endif %}
 
 {% endfor %}
