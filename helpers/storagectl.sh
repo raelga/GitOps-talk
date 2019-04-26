@@ -52,7 +52,7 @@ function gcp_update() {
 
 }
 
-function gcp_sync() {
+function gcp_apply() {
 
   gcp_config;
 
