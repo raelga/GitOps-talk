@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -exuo pipefail
+set -euo pipefail
 
 source $(dirname $0)/providercfg.sh
 
@@ -11,6 +11,8 @@ function main() {
 
   ACTION=${1:-update};
   BUCKET_FOLDER=${2:-};
+  PREFIX=${3:-};
+
   check;
 
   case ${PROVIDER:-}_${ACTION} in
@@ -37,6 +39,8 @@ function gcp_update() {
 
   BUCKET_SRC=${BUCKET_FOLDER}
   BUCKET_DST=$(basename ${BUCKET_SRC})
+  test -z ${PREFIX} || BUCKET_DST=${PREFIX}-${BUCKET_DST};
+
   gsutil rsync -R -J -C -c ${BUCKET_SRC}/ gs://${BUCKET_DST}
 
 #-C       If an error occurs, continue to attempt to copy the remaining files.
@@ -54,6 +58,7 @@ function gcp_sync() {
 
   BUCKET_SRC=${BUCKET_FOLDER}
   BUCKET_DST=$(basename ${BUCKET_SRC})
+  test -z ${PREFIX} || BUCKET_DST=${PREFIX}-${BUCKET_DST};
   gsutil rsync -R -J -C -c -d ${BUCKET_SRC}/ gs://${BUCKET_DST}
 
 #-d       Delete extra files under dst_url not found under src_url.
@@ -72,6 +77,8 @@ function gcp_delete() {
 
   BUCKET_SRC=${BUCKET_FOLDER}
   BUCKET_DST=$(basename ${BUCKET_SRC})
+  test -z ${PREFIX} || BUCKET_DST=${PREFIX}-${BUCKET_DST};
+
   gsutil rm -R -f gs://${BUCKET_DST}
 
 #-f     Continues silently despite errors when removing multiple objects.
