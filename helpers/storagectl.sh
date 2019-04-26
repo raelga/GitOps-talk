@@ -71,6 +71,27 @@ function gcp_sync() {
 
 }
 
+
+function gcp_diff() {
+
+  gcp_config;
+
+  BUCKET_SRC=${BUCKET_FOLDER}
+  BUCKET_DST=$(basename ${BUCKET_SRC})
+  test -z ${PREFIX} || BUCKET_DST=${PREFIX}-${BUCKET_DST};
+  gsutil rsync -R -J -C -c -d -n ${BUCKET_SRC}/ gs://${BUCKET_DST}
+
+#-d       Delete extra files under dst_url not found under src_url.
+#-C       If an error occurs, continue to attempt to copy the remaining files.
+#-c       Causes the rsync command to compute and compare checksums for files
+#         if the size of source and destination match.
+#-J       Applies gzip transport encoding to file uploads. T
+#-R       Causes directories, buckets, and bucket subdirectories to be
+#         synchronized recursively.
+#-n       Causes rsync to run in "dry run" mode.
+
+}
+
 function gcp_delete() {
 
   gcp_config;
