@@ -1,10 +1,13 @@
 #!/bin/bash
 
-set -exuo pipefail
+set -euo pipefail
+
+function error() { echo "[!] $@"; exit; }
+function info()  { echo "[i] $@"; }
 
 function gcp_config() {
 
-  which -s gcloud \
+  which gcloud &> /dev/null \
     || error "gcloud SDK is not installed." \
     && info "gcloud installed with $(gcloud version | grep 'Google Cloud SDK')."
 
@@ -12,7 +15,7 @@ function gcp_config() {
     || error "GCLOUD_SERVICE_ACCOUNT environment variable must be set." \
     && {
       gcloud auth activate-service-account \
-        --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -D) \
+        --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d) \
       || error "Unable to activate the service account." \
       && info  "Service account set to $(gcloud config get-value account)."
     }
