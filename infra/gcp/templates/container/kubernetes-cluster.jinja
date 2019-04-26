@@ -87,7 +87,11 @@ resources:
     {% if nodePool.version or properties.initialVersion %}
       version: {{ nodePool.version | default (properties.initialVersion) }}
     {% endif %}
-      initialNodeCount: {{ nodePool.initialNodeCount }}
+    {% if not properties.enableKubernetesAlpha %}
+      management:
+        autoUpgrade: {{ nodePool.autoUpgrade }}
+        autoRepair: {{ nodePool.autoRepair }}
+    {% endif %}
     {% if nodePool.autoscaling %}
       autoscaling:
         enabled: true
