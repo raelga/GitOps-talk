@@ -171,6 +171,16 @@ properties:
           type: string
           description: >
             Name of the node pool.
+        autoUpgrade:
+          type: boolean
+          default: false
+          description: >
+            Whether the nodes will be automatically upgraded.
+        autoRepair:
+          type: boolean
+          default: true
+          description: >
+            Whether the nodes will be automatically repaired.
         initialNodeCount:
           type: number
           description: >
