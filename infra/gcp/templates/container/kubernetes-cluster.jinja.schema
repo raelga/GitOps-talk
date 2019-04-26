@@ -185,7 +185,7 @@ properties:
           type: number
           description: >
             Minimum number of nodes for the Node Pool.
-          default: 1
+          default: 2
           minimum: 1
           maximum: 5
         maxNodeCount:
