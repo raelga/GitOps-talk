@@ -11,6 +11,8 @@ function main() {
 
   ACTION=${1:-apply};
   MANIFEST=${2:-};
+  PREFIX=${3:-};
+
   check;
 
   case ${PROVIDER:-}_${ACTION} in
@@ -34,6 +36,7 @@ function gcp_deployment_config() {
   DEPLOYMENT_PATH=$(dirname ${DEPLOYMENT_CONF})
   DEPLOYMENT_NAME=$(basename ${DEPLOYMENT_PATH})-${DEPLOYMENT_FILE%.*}
 
+  test -z ${PREFIX} || DEPLOYMENT_NAME=${PREFIX}-${DEPLOYMENT_NAME};
 
 }
 
