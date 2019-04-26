@@ -321,6 +321,7 @@ resources:
             - --api
             - --kubernetes
             - --logLevel=INFO
+            - --accesslog
   metadata:
     dependsOn:
       - {{ CLUSTER_NAME }}-k8s-type-extensions-v1beta1
