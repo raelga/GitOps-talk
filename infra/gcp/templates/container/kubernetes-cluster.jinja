@@ -97,6 +97,9 @@ resources:
         enabled: true
         minNodeCount: {{ nodePool.minNodeCount }}
         maxNodeCount: {{ nodePool.maxNodeCount }}
+      initialNodeCount: {{ nodePool.minNodeCount }}
+    {% else %}
+      initialNodeCount: {{ nodePool.initialNodeCount }}
     {% endif %}
       config:
         machineType: {{ nodePool.machineType }}
