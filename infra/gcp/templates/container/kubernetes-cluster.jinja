@@ -63,8 +63,9 @@ resources:
         - name: initial-gke-node-pool
           initialNodeCount: 0
 
-{% if properties.mode == 'UPDATE' %}
+{% set GKE_NODE_POOLS = properties.nodePools | reverse if properties.nodePools | count > 1 else properties.nodePools %}
 
+{% for nodePool in GKE_NODE_POOLS %}
 - name: {{ CLUSTER_NAME }}-{{ nodePool.name }}-gke-node-pool
 {% if properties.type == 'REGIONAL' %}
   type: gcp-types/container-v1:projects.locations.clusters.nodePools
