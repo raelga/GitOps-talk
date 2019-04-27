@@ -9,7 +9,7 @@ function gcp_k8s_config() {
 
   which kubectl &> /dev/null \
     || error "kubectl is not installed." \
-    && info "kubectl installed with $(kubectl version | sed -n 's/^Client.*GitVersion:"\(v[0-9\.]\+\)".*/\1/p')."
+    && info "kubectl installed with $(kubectl version --client=true | sed -n 's/^Client.*GitVersion:"\(v[0-9\.]\+\)".*/\1/p')."
 
   test ! -z ${K8S_CLUSTER:-} \
     || error "K8S_CLUSTER environment variable must be set." \
