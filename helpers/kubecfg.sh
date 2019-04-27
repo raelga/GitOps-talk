@@ -30,7 +30,7 @@ function gcp_k8s_config() {
     && info  "K8S_CLUSTER_LOCATION project set to ${K8S_CLUSTER_LOCATION}.";
 
   # Get region or zone  flag based on the location
-  echo ${K8S_CLUSTER_LOCATION} | egrep -c '[a-z]+-[a-z]+[0-9]-[a-z]' \
+  echo ${K8S_CLUSTER_LOCATION} | egrep -q '[a-z]+-[a-z]+[0-9]-[a-z]' \
     || export GCLOUD_CLUSTER_LOCATION_FLAG="--zone ${K8S_CLUSTER_LOCATION}" \
     && export GCLOUD_CLUSTER_LOCATION_FLAG="--region ${K8S_CLUSTER_LOCATION}";
 
