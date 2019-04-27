@@ -4,14 +4,7 @@ info:
   description: Creates a Google Storage bucket resource
   version: 1.0
 
-required:
-- name
-
 properties:
-
-  name:
-    type: string
-    description: Bucket name (required), must be unique in GCP.
 
   storageClass:
     enum:
