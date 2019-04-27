@@ -94,6 +94,7 @@ function gcp_delete() {
   gcp_deployment_config;
 
   gcloud deployment-manager deployments delete ${DEPLOYMENT_NAME} --quiet \
+    --async \
     && info "Deployment ${DEPLOYMENT_NAME} deleted." \
     || error "Unable to delete ${DEPLOYMENT_NAME}.";
 
