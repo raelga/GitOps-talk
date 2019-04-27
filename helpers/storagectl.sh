@@ -18,8 +18,8 @@ function main() {
   case ${PROVIDER:-}_${ACTION} in
     gcp_update)
       gcp_update $BUCKET_FOLDER;;
-    gcp_sync)
-      gcp_sync $BUCKET_FOLDER;;
+    gcp_apply)
+      gcp_apply $BUCKET_FOLDER;;
     gcp_delete)
       gcp_delete $BUCKET_FOLDER;;
     *)
