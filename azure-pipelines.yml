@@ -1,0 +1,427 @@
+name: $(BuildID)
+
+#
+# Setup pipeline triggers
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#triggers
+#
+
+# Enable Pull request validation triggers
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#pr-trigger
+pr:
+  #autoCancel: false # indicates whether additional pushes to a PR should cancel in-progress runs for the same PR.
+  branches:
+    include: # branch names which will trigger a build
+      - stg
+      - int
+      - master
+  #   exclude: # branch names which will not trigger a build
+  #     - dev
+  paths:
+    exclude: # file paths which will not trigger a build
+    - README.md
+    - LICENSE.md
+    - docs/*
+    - helpers/*
+    - scripts/*
+
+# Enable Continuous integration (CI)
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#push-trigger
+trigger:
+  branches:
+    include: # branch names which will trigger a build
+      - stg
+      - int
+      - master
+    exclude: # branch names which will not trigger a build
+      - dev
+  paths:
+    exclude: # file paths which will not trigger a build
+    - README.md
+    - LICENSE.md
+    - docs/*
+    - helpers/*
+    - scripts/*
+
+
+#
+# Setup pipeline environment
+#
+
+# Setup pipeline resources
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#resources
+resources:
+  containers:
+  - container: gcloud
+    image:  google/cloud-sdk:243.0.0-slim
+  - container: gitopsci
+    image:  raelga/gitopsci:v1.0
+
+# Setup variable groups
+# https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#variables
+variables:
+- group: gcloud-environment
+  # The gcloud-environment contains:
+  #   - GCLOUD_SERVICE_ACCOUNT: The Google Cloud Service Account (as secret)
+  #   - GCLOUD_PROJECT_ID: The Google Cloud Project ID (as secret)
+- name: env.provider
+  value: gcp
+- name: env.name
+  value: $[ coalesce(variables['System.PullRequest.TargetBranch'], variables['Build.SourceBranchName']) ]
+- name: env.requiresPrefix
+  value: $[ eq(variables['Build.Reason'], 'PullRequest') ]
+- name: env.prefix
+  value: $[ format('pr{0}', variables['System.PullRequest.PullRequestNumber']) ]
+# Paths
+- name: env.paths.infra
+  value: infra/$(env.provider)/deployments/$(env.name)
+- name: env.paths.storage
+  value: storage/$(env.name)
+- name: env.paths.k8s
+  value: k8s/$(env.name)
+
+#
+# Setup pipeline stages
+#
+
+stages:
+
+- stage: Plan
+  jobs:
+  - job: Description
+    steps:
+      - bash: |
+          echo "Trigger information:"
+          echo "  Reason          $(Build.Reason)"
+          echo "  Environment     $(env.name)"
+          echo "  RequiresPrefix? $(env.requiresPrefix)"
+          if $(env.requiresPrefix); then
+          echo "  Prefix          $(env.prefix)";
+          fi
+          echo "  Provider        $(env.provider)"
+          echo "  Path Infra      $(env.paths.infra)"
+          echo "  Path Storage    $(env.paths.storage)"
+          echo "  Path K8S        $(env.paths.k8s)"
+
+- stage: Environment
+  displayName: Environment
+  jobs:
+
+  - job: GoogleCloudEnvCheck
+    displayName: Check gcloud
+    container: gcloud
+    steps:
+
+      - bash: |
+          if which gcloud &> /dev/null;
+          then
+            echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
+          else
+            echo "[!] gcloud SDK is not installed."; exit 1;
+          fi
+        displayName: Check Google Cloud SDK version
+
+      - bash: |
+          if which gsutil &> /dev/null;
+          then
+            echo "[i] gsutil installed with $(gsutil version).";
+          else
+            echo "[!] gsutil is not installed."; exit 1;
+          fi
+        displayName: Check gsutil version
+
+      - bash: |
+          if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
+          then
+            if gcloud auth activate-service-account \
+                --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
+            then
+              echo "[i] Service account $(gcloud config get-value account) set.";
+            else
+              echo "[!] Unable to activate the service account.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - bash: |
+          if test ! -z ${GCLOUD_PROJECT_ID:-};
+          then
+            echo "[i] GCLOUD_PROJECT_ID project set to ${GCLOUD_PROJECT_ID}.";
+            PROJECT_STATUS=
+            if test ACTIVE == $(gcloud projects describe ${GCLOUD_PROJECT_ID} \
+              --format="value(lifecycleState)"
+            );
+            then
+            echo "[i] ${GCLOUD_PROJECT_ID} project is ACTIVE.";
+            else
+              echo "[!] ${GCLOUD_PROJECT_ID} status must be active.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_PROJECT_ID environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+  - job: gitopsciEnvCheck
+    displayName: Check gitopsci
+    container: gitopsci
+    steps:
+
+      - bash: |
+          if which gcloud &> /dev/null;
+          then
+            echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
+          else
+            echo "[!] gcloud SDK is not installed."; exit 1;
+          fi
+        displayName: Check Google Cloud SDK version
+
+      - bash: |
+          if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
+          then
+            if gcloud auth activate-service-account \
+                --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
+            then
+              echo "[i] Service account $(gcloud config get-value account) set.";
+            else
+              echo "[!] Unable to activate the service account.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - bash: |
+          if which kubectl &> /dev/null;
+          then
+            if test $(sed 's/.*Minor:"\([~0-9]\+\)".*/\1/' <(kubectl version --client=true 2>&1) ) -ge 14;
+            then
+              echo "[i] kubectl installed with $(kubectl version --client=true).";
+            else
+              echo "[!] kubectl minor version should be greather than 14."
+            fi
+          else
+            echo "[!] kubectl is not installed."; exit 1;
+          fi
+        displayName: Check kubectl version
+
+- stage: Infrastructure
+  displayName: Infrastructure
+  jobs:
+
+  - job: InfrastructureDiff
+    displayName: Preview changes
+    container: gcloud
+    steps:
+
+      - script: >
+          gcloud auth activate-service-account
+          --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - bash: |
+          while read manifest;
+          do
+            name=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            if $(env.requiresPrefix); then name=$(env.prefix)-${name}; fi
+            echo "Preview:";
+            echo "    Deployment  ${name}";
+            echo "    Manifest    ${manifest}";
+            echo "    Project     ${GCLOUD_PROJECT_ID}";
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Preview changes with deployment manager
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+  - job: InfrastructureApply
+    displayName: Apply changes
+    container: gcloud
+    dependsOn:
+      - InfrastructureDiff
+    steps:
+      - bash: |
+          while read manifest;
+          do
+            name=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            if $(env.requiresPrefix); then name=$(env.prefix)-${name}; fi
+            echo "Update:";
+            echo "    Deployment  $name";
+            echo "    Manifest    $manifest";
+            echo "    Project     ${GCLOUD_PROJECT_ID}";
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Apply changes with deployment manager
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+- stage: Storage
+  displayName: Storage
+  jobs:
+
+  - job: CheckStorage
+    displayName: Check sources
+    steps:
+
+      - bash: |
+          if test -d $(env.paths.storage);
+          then
+            echo "[i] $(env.paths.storage) folder found.";
+            echo "##vso[task.setvariable variable=Exists;isOutput=true]true";
+          else
+            echo "[i] No storage folder found, skipping storage stage.";
+            echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+          fi
+        name: storageFolder
+        displayName: Check if the storage folder exists
+
+      - bash: |
+          STORAGE_SOURCES_COUNT=$( \
+            find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d | wc -l
+          );
+          if test ${STORAGE_SOURCES_COUNT} -gt 0;
+          then
+            echo "[i] ${STORAGE_SOURCES_COUNT} storage sources found.";
+            echo "##vso[task.setvariable variable=Exists;isOutput=true]true";
+          else
+            echo "[i] No storage sources found, skipping storage stage.";
+            echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+          fi
+        name: storageSources
+        condition: eq(variables['storageFolder.Exists'],'true')
+        displayName: Check if there are storage source folders
+
+  - job: UpdateStorage
+    displayName: Update content
+    container: gcloud
+    dependsOn:
+      - CheckStorage
+    condition:
+      and(
+        eq(dependencies.CheckStorage.outputs['storageFolder.Exists'],'true'),
+        eq(dependencies.CheckStorage.outputs['storageSources.Exists'],'true')
+      )
+    steps:
+
+      - bash: |
+          gcloud auth activate-service-account \
+            --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - bash: |
+          while read bucket_src;
+          do
+            bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
+            if $(env.requiresPrefix); then bucket=$(env.prefix)-${name}; fi
+            echo gsutil ls gs://$bucket
+          done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
+        displayName: Check if the buckets exists
+
+      - bash: |
+          while read bucket_src;
+          do
+            bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
+            if $(env.requiresPrefix); then bucket=$(env.prefix)-${name}; fi
+
+            if test -f ${bucket_src}/.ci/delete-extra-files;
+            then
+              echo "Sync deleting extra files.";
+              echo "  Source        ${bucket_src}";
+              echo "  Destination   ${bucket}";
+            else
+              echo "Sync without deleting extra files."
+              echo "  Source        ${bucket_src}";
+              echo "  Destination   ${bucket}";
+            fi
+          done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
+        displayName: Update buckets contents
+
+- stage: Kubernetes
+  displayName: Kubernetes
+  jobs:
+
+  - job: CheckClusterManifests
+    displayName: Check k8s manifests
+    steps:
+
+      - bash: |
+          GKE_MANIFEST_COUNT=$( \
+            egrep -l -o '^\s+- name.\s+cluster-name' $(env.paths.infra) | wc -l
+          );
+          if test ${GKE_MANIFEST_COUNT} -eq 0;
+          then
+            echo "[i] No cluster manifest found, skipping kubernetes stage.";
+            echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+          elif test ${GKE_MANIFEST_COUNT} -gt 1;
+          then
+            echo "[!] More than one cluster manifest found.";
+            echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+            exit 1;
+          else
+            echo "[i] Cluster manifest found.";
+            echo "##vso[task.setvariable variable=Exists;isOutput=true]true"
+          fi
+        name: k8sManifest
+        displayName: Check GKE infrastructure manifests
+
+
+  - job: CheckCluster
+    displayName: Check k8s cluster
+    container: gcloud
+    dependsOn: CheckClusterManifests
+    condition: >
+      eq(dependencies.CheckClusterManifests.outputs['k8sManifest.Exists'],'true')
+    steps:
+
+      - script: >
+          gcloud auth activate-service-account
+            --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - script: >
+          K8S_CLUSTER_LOCATION=$(
+            sed -n 's/^cluster-location\s\+\(.*\)/\1/p'
+            <(gcloud --project ${GCLOUD_PROJECT_ID} \
+              deployment-manager deployments describe ${K8S_CLUSTER});
+        displayName: Get GKE cluster location
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+      - bash: |
+          if egrep -q '[a-z]+-[a-z]+[0-9]-[a-z]' <<<${K8S_CLUSTER_LOCATION};
+          then
+            GCLOUD_CLUSTER_LOCATION_FLAG="--region ${K8S_CLUSTER_LOCATION}";
+          else
+            GCLOUD_CLUSTER_LOCATION_FLAG="--zone ${K8S_CLUSTER_LOCATION}";
+          fi
+        displayName: Set GKE cluster location flag
+
+      - bash:
+          if gcloud --project ${GCLOUD_PROJECT_ID} \
+              container clusters get-credentials ${K8S_CLUSTER} \
+              ${GCLOUD_CLUSTER_LOCATION_FLAG};
+          then
+            echo "[i] kubectl cluster set to ${K8S_CLUSTER}.";
+          else
+            echo "[!] unable to retrieve cluster credentials.";
+          fi
+        displayName: Retrieve GKE cluster credentials
+
+      - script: >
+          echo kubectl get pods
