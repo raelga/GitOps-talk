@@ -23,6 +23,7 @@ pr:
     - docs/*
     - helpers/*
     - scripts/*
+    - docker/*
 
 # Enable Continuous integration (CI)
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#push-trigger
@@ -41,6 +42,7 @@ trigger:
     - docs/*
     - helpers/*
     - scripts/*
+    - docker/*
 
 
 #
