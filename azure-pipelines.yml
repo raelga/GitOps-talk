@@ -13,9 +13,11 @@ pr:
     include: # branch names which will trigger a build
       - stg
       - int
+      - pro
+    exclude: # branch names which will not trigger a build
       - master
-  #   exclude: # branch names which will not trigger a build
-  #     - dev
+      - base
+      - dev
   paths:
     exclude: # file paths which will not trigger a build
     - README.md
@@ -30,10 +32,12 @@ pr:
 trigger:
   branches:
     include: # branch names which will trigger a build
+      - base
       - stg
       - int
-      - master
+      - pro
     exclude: # branch names which will not trigger a build
+      - master
       - dev
   paths:
     exclude: # file paths which will not trigger a build
