@@ -1,9 +1,7 @@
-
-#REGISTRY ?= eu.gcr.io/${GCP_PROJECT}
 TAG ?= $(shell git rev-parse --verify --short HEAD)
 
 DOCKERFILES = $(shell find * -type f -name Dockerfile)
-IMAGES = $(subst /,\:,$(subst /Dockerfile,,$(DOCKERFILES)))
+IMAGES = $(subst /Dockerfile,,$(DOCKERFILES))
 
 .PHONY: help
 
@@ -16,17 +14,17 @@ help:
 
 $(addprefix docker-build-,$(IMAGES)): docker-build-%:
 	test -d $*/context \
-	&&	docker build -t $(REGISTRY)/$*:$(TAG) -f $*/Dockerfile $*/context \
-	||	docker build -t $(REGISTRY)/$*:$(TAG) $*
+	&&	docker build -t $*:$(TAG) -f $*/Dockerfile $*/context \
+	||	docker build -t $*:$(TAG) $*
 
 $(addprefix docker-push-,$(IMAGES)): docker-push-%:
-	docker push $(REGISTRY)/$*:$(TAG)
+	docker push $*:$(TAG)
 
 $(addprefix docker-tag-latest-,$(IMAGES)): docker-tag-latest-%:
-	docker tag $(REGISTRY)/$*:$(TAG) $(REGISTRY)/$*:latest
+	docker tag $*:$(TAG) $*:latest
 
 $(addprefix docker-push-latest-,$(IMAGES)): docker-push-latest-%: docker-tag-latest-%
-	docker push $(REGISTRY)/$*:latest
+	docker push $*:latest
 
 $(addprefix docker-run-,$(IMAGES)): docker-run-%:
-	docker run -ti --rm $(REGISTRY)/$*:$(TAG) /bin/bash
+	docker run -ti --rm $*:$(TAG) /bin/bash
