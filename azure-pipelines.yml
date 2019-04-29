@@ -277,7 +277,7 @@ stages:
             echo "    Project     ${GCLOUD_PROJECT_ID}";
 
             gcloud deployment-manager deployments update ${deployment} \
-              --config ${deployment} --preview \
+              --config ${manifest} --preview \
               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
               || { "[!] Previewing of ${deployment} failed."; exit 1; }
 
