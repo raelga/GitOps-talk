@@ -270,7 +270,7 @@ stages:
           while read manifest;
           do
 
-            deployment=$(sed "s#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#" <<< ${manifest});
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
             test -z ${PREFIX:-} || deployment=${PREFIX}-${deployment};
 
             echo "[i] Previewing deployment";
