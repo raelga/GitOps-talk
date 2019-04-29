@@ -461,6 +461,12 @@ stages:
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
             test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${bucket};
 
+            if gsutil ls gs://$bucket;
+            then
+              echo "[i] $bucket exists."
+            else
+              echo "[i] $bucket doesn't exists or is not accesible.";
+            fi
           done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
         displayName: Check if the buckets exists
 
