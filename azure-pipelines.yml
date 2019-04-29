@@ -255,11 +255,16 @@ stages:
             if test ! -z $(gcloud deployment-manager deployments list \
               --format="value(name)" --filter="name:${deployment}");
             then
+              echo "[i] ${deployment} already exists."
               gcloud deployment-manager deployments describe ${deployment};
             else
-              gcloud deployment-manager deployments create ${deployment} \
-                --config <(echo "resources:") \
-                  || echo "[!] Unable to create ${deployment} empty deployment.";
+              if gcloud deployment-manager deployments create ${deployment} \
+                --config <(echo "resources:");
+              then
+                echo "[i] Empty deployment for ${deployment} created.";
+              else
+                echo "[!] Unable to create ${deployment} empty deployment.";
+              fi
             fi
 
           done < <(find $(env.paths.infra) -name '*yaml');
