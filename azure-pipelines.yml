@@ -107,115 +107,115 @@ stages:
           echo "  Path K8S        $(env.paths.k8s)"
         displayName: Check environment variables
 
-  # - job: GoogleCloudEnvCheck
-  #   displayName: Check gcloud
-  #   container: gcloud
-  #   steps:
+  - job: GoogleCloudEnvCheck
+    displayName: Check gcloud
+    container: gcloud
+    steps:
 
-  #     - bash: |
-  #         if which gcloud &> /dev/null;
-  #         then
-  #           echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
-  #         else
-  #           echo "[!] gcloud SDK is not installed."; exit 1;
-  #         fi
-  #       displayName: Check Google Cloud SDK version
+      - bash: |
+          if which gcloud &> /dev/null;
+          then
+            echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
+          else
+            echo "[!] gcloud SDK is not installed."; exit 1;
+          fi
+        displayName: Check Google Cloud SDK version
 
-  #     - bash: |
-  #         if which gsutil &> /dev/null;
-  #         then
-  #           echo "[i] gsutil installed with $(gsutil version).";
-  #         else
-  #           echo "[!] gsutil is not installed."; exit 1;
-  #         fi
-  #       displayName: Check gsutil version
+      - bash: |
+          if which gsutil &> /dev/null;
+          then
+            echo "[i] gsutil installed with $(gsutil version).";
+          else
+            echo "[!] gsutil is not installed."; exit 1;
+          fi
+        displayName: Check gsutil version
 
-  #     - bash: |
-  #         if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
-  #         then
-  #           if gcloud auth activate-service-account \
-  #               --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
-  #           then
-  #             echo "[i] Service account $(gcloud config get-value account) set.";
-  #           else
-  #             echo "[!] Unable to activate the service account.";
-  #             exit 1;
-  #           fi
-  #         else
-  #           echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
-  #           exit 1;
-  #         fi
-  #       displayName: Check Google Cloud SDK service account
-  #       env:
-  #         GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - bash: |
+          if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
+          then
+            if gcloud auth activate-service-account \
+                --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
+            then
+              echo "[i] Service account $(gcloud config get-value account) set.";
+            else
+              echo "[!] Unable to activate the service account.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-  #     - bash: |
-  #         if test ! -z ${GCLOUD_PROJECT_ID:-};
-  #         then
-  #           echo "[i] GCLOUD_PROJECT_ID project set to ${GCLOUD_PROJECT_ID}.";
-  #           if test ACTIVE == $(gcloud projects describe ${GCLOUD_PROJECT_ID} \
-  #             --format="value(lifecycleState)"
-  #           );
-  #           then
-  #           echo "[i] ${GCLOUD_PROJECT_ID} project is ACTIVE.";
-  #           else
-  #             echo "[!] ${GCLOUD_PROJECT_ID} status must be active.";
-  #             exit 1;
-  #           fi
-  #         else
-  #           echo "[!] GCLOUD_PROJECT_ID environment variable must be set.";
-  #           exit 1;
-  #         fi
-  #       displayName: Check Google Cloud SDK project
-  #       env:
-  #         GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+      - bash: |
+          if test ! -z ${GCLOUD_PROJECT_ID:-};
+          then
+            echo "[i] GCLOUD_PROJECT_ID project set to ${GCLOUD_PROJECT_ID}.";
+            if test ACTIVE == $(gcloud projects describe ${GCLOUD_PROJECT_ID} \
+              --format="value(lifecycleState)"
+            );
+            then
+            echo "[i] ${GCLOUD_PROJECT_ID} project is ACTIVE.";
+            else
+              echo "[!] ${GCLOUD_PROJECT_ID} status must be active.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_PROJECT_ID environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-  # - job: gitopsciEnvCheck
-  #   displayName: Check gitopsci
-  #   container: gitopsci
-  #   steps:
+  - job: gitopsciEnvCheck
+    displayName: Check gitopsci
+    container: gitopsci
+    steps:
 
-  #     - bash: |
-  #         if which gcloud &> /dev/null;
-  #         then
-  #           echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
-  #         else
-  #           echo "[!] gcloud SDK is not installed."; exit 1;
-  #         fi
-  #       displayName: Check Google Cloud SDK version
+      - bash: |
+          if which gcloud &> /dev/null;
+          then
+            echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
+          else
+            echo "[!] gcloud SDK is not installed."; exit 1;
+          fi
+        displayName: Check Google Cloud SDK version
 
-  #     - bash: |
-  #         if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
-  #         then
-  #           if gcloud auth activate-service-account \
-  #               --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
-  #           then
-  #             echo "[i] Service account $(gcloud config get-value account) set.";
-  #           else
-  #             echo "[!] Unable to activate the service account.";
-  #             exit 1;
-  #           fi
-  #         else
-  #           echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
-  #           exit 1;
-  #         fi
-  #       displayName: Check Google Cloud SDK service account
-  #       env:
-  #         GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - bash: |
+          if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
+          then
+            if gcloud auth activate-service-account \
+                --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
+            then
+              echo "[i] Service account $(gcloud config get-value account) set.";
+            else
+              echo "[!] Unable to activate the service account.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-  #     - bash: |
-  #         if which kubectl &> /dev/null;
-  #         then
-  #           if test $(sed 's/.*Minor:"\([~0-9]\+\)".*/\1/' <(kubectl version --client=true 2>&1) ) -ge 14;
-  #           then
-  #             echo "[i] kubectl installed with $(kubectl version --client=true).";
-  #           else
-  #             echo "[!] kubectl minor version should be greather than 14."
-  #           fi
-  #         else
-  #           echo "[!] kubectl is not installed."; exit 1;
-  #         fi
-  #       displayName: Check kubectl version
+      - bash: |
+          if which kubectl &> /dev/null;
+          then
+            if test $(sed 's/.*Minor:"\([~0-9]\+\)".*/\1/' <(kubectl version --client=true 2>&1) ) -ge 14;
+            then
+              echo "[i] kubectl installed with $(kubectl version --client=true).";
+            else
+              echo "[!] kubectl minor version should be greather than 14."
+            fi
+          else
+            echo "[!] kubectl is not installed."; exit 1;
+          fi
+        displayName: Check kubectl version
 
 - stage: Infrastructure
   displayName: Infrastructure
