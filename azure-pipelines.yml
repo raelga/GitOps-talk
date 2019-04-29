@@ -514,7 +514,7 @@ stages:
 
       - bash: |
           GKE_MANIFEST_COUNT=$( \
-            egrep -l -o '^\s+- name.\s+cluster-name' $(env.paths.infra) | wc -l
+            egrep -rlo '^\s+- name.\s+cluster-name' $(env.paths.infra) | wc -l
           );
           if test ${GKE_MANIFEST_COUNT} -eq 0;
           then
