@@ -240,8 +240,8 @@ stages:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
       - script: >
-          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
-        displayName: Set ENV_PREFIX if required
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
         condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
@@ -249,7 +249,7 @@ stages:
           do
 
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            test -z ${PREFIX:-} || deployment=${PREFIX}-${deployment};
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
             if test ! -z $(gcloud deployment-manager deployments list \
               --format="value(name)" --filter="name:${deployment}");
@@ -271,7 +271,7 @@ stages:
           do
 
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            test -z ${PREFIX:-} || deployment=${PREFIX}-${deployment};
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
             echo "[i] Previewing deployment";
             echo "    Deployment  ${deployment}";
@@ -312,8 +312,8 @@ stages:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
       - script: >
-          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
-        displayName: Set ENV_PREFIX if required
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
         condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
@@ -321,7 +321,7 @@ stages:
           do
 
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${deployment};
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
             echo "Update:";
             echo "    Deployment  $deployment";
@@ -366,8 +366,8 @@ stages:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
       - script: >
-          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
-        displayName: Set ENV_PREFIX if required
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
         condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
@@ -375,7 +375,7 @@ stages:
           do
 
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${deployment};
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
             if test -n $(gcloud deployment-manager deployments list \
               --format="value(name)" --filter="name:${deployment}");
@@ -456,15 +456,16 @@ stages:
           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
       - script: >
-          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
-        displayName: Set ENV_PREFIX if required
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
           while read bucket_src;
           do
 
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${bucket};
+            test -z "${PREFIX}" || bucket=${PREFIX}-${bucket};
 
             if gsutil ls gs://$bucket;
             then
@@ -480,7 +481,7 @@ stages:
           do
 
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${bucket};
+            test -z "${PREFIX}" || bucket=${PREFIX}-${bucket};
 
             if test -f ${bucket_src}/.ci/delete-extra-files;
             then
