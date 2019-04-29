@@ -312,8 +312,10 @@ stages:
       - bash: |
           while read manifest;
           do
-            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            test -z $(env.pullRequest) || deployment=$(env.prefix)-${deployment};
+
+            if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
+            deployment=${PREFIX}-$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+
             echo "Update:";
             echo "    Deployment  $deployment";
             echo "    Manifest    $manifest";
