@@ -284,7 +284,8 @@ stages:
               || { "[!] Previewing of ${deployment} failed."; exit 1; }
 
               gcloud deployment-manager deployments cancel-preview ${deployment} \
-              || { "[!] Preview cancel of ${deployment} failed."; exit 1; }
+                 > /dev/null \
+                || { "[!] Preview cancel of ${deployment} failed."; exit 1; }
 
           done < <(find $(env.paths.infra) -name '*yaml');
         displayName: Preview changes with deployment manager
