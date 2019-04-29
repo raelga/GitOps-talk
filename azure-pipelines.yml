@@ -488,10 +488,12 @@ stages:
               echo "Sync deleting extra files.";
               echo "  Source        ${bucket_src}";
               echo "  Destination   ${bucket}";
+              gsutil rsync -R -J -C -c -d ${bucket_src}/ gs://${bucket}
             else
               echo "Sync without deleting extra files."
               echo "  Source        ${bucket_src}";
               echo "  Destination   ${bucket}";
+              gsutil rsync -R -J -C -c ${bucket_src}/ gs://${bucket}
             fi
           done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
         displayName: Update buckets contents
