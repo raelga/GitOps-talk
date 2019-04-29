@@ -321,7 +321,7 @@ stages:
             echo "    Project     ${GCLOUD_PROJECT_ID}";
 
             gcloud deployment-manager deployments update \
-              ${deployment} --config ${deployment} \
+              ${deployment} --config ${manifest} \
               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
                 || { "[!] Update of ${deployment} failed."; exit 1; }
 
@@ -358,17 +358,23 @@ stages:
             if "${BUILD_REASON}" == 'PullRequest'; then PREFIX=$(env.prefix); fi
             deployment=${PREFIX}$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
 
-            if grep -q '- id' <(gcloud deployment-manager deployments \
-              describe ${deployment} --format="yaml(resources[].id)");
+            if test -n $(gcloud deployment-manager deployments list \
+              --format="value(name)" --filter="name:${deployment}");
             then
-              echo "Clean up empty deployment:";
-              echo "    Deployment  $deployment";
-              echo "    Manifest    $manifest";
-              echo "    Project     ${GCLOUD_PROJECT_ID}";
+              if test 0 -eq $(grep -c -- '- id:' \
+                <(gcloud deployment-manager deployments \
+                describe ${deployment} --format="yaml(resources[].id)"
+              );
+              then
+                echo "Deleting empty deployment:";
+                echo "    Deployment  $deployment";
+                echo "    Manifest    $manifest";
+                echo "    Project     ${GCLOUD_PROJECT_ID}";
 
-              gcloud deployment-manager deployments delete \
-                ${deployment} --delete-policy ABANDON \
-                || { "[!] Delete of ${deployment} failed."; exit 1; }
+                gcloud deployment-manager deployments delete \
+                  ${deployment} --delete-policy ABANDON \
+                  || { "[!] Delete of ${deployment} failed."; exit 1; }
+              fi
             fi
           done < <(find $(env.paths.infra) -name '*yaml');
         displayName: Delete empty deployment manager deployments
