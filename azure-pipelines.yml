@@ -333,8 +333,7 @@ stages:
               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
               || { "[!] Previewing of ${deployment} failed."; exit 1; }
 
-            gcloud deployment-manager deployments update \
-              ${deployment} --config ${manifest} \
+            gcloud deployment-manager deployments update ${deployment} \
               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
                 || { "[!] Update of ${deployment} failed."; exit 1; }
 
