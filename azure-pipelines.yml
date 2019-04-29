@@ -73,8 +73,8 @@ variables:
   value: gcp
 - name: env.name
   value: $[ coalesce(variables['System.PullRequest.TargetBranch'], variables['Build.SourceBranchName']) ]
-- name: env.requiresPrefix
-  value: $[ eq(variables['Build.Reason'], 'PullRequest') ]
+- name: env.pullRequest
+  value: $(System.PullRequest.PullRequestNumber)
 - name: env.prefix
   value: $[ format('pr{0}', variables['System.PullRequest.PullRequestNumber']) ]
 # Paths
@@ -91,26 +91,25 @@ variables:
 
 stages:
 
-- stage: Plan
+- stage: Environment
+  displayName: Environment
   jobs:
-  - job: Description
+
+  - job: VarsCheck
+    displayName: Check vars
     steps:
       - bash: |
           echo "Trigger information:"
           echo "  Reason          $(Build.Reason)"
           echo "  Environment     $(env.name)"
-          echo "  RequiresPrefix? $(env.requiresPrefix)"
-          if $(env.requiresPrefix); then
-          echo "  Prefix          $(env.prefix)";
-          fi
+          echo "  PullRequestId   $(env.pullRequest)"
+          test ! -z $(env.pullRequest) || echo "  Prefix          $(env.prefix)";
           echo "  Provider        $(env.provider)"
           echo "  Path Infra      $(env.paths.infra)"
           echo "  Path Storage    $(env.paths.storage)"
           echo "  Path K8S        $(env.paths.k8s)"
+        displayName: Check environment variables
 
-- stage: Environment
-  displayName: Environment
-  jobs:
 
   - job: GoogleCloudEnvCheck
     displayName: Check gcloud
@@ -242,10 +241,10 @@ stages:
       - bash: |
           while read manifest;
           do
-            name=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            if $(env.requiresPrefix); then name=$(env.prefix)-${name}; fi
-            echo "Preview:";
-            echo "    Deployment  ${name}";
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test ! -z $(env.pullRequest) || deployment=$(env.prefix)-${deployment};
+            echo "[i] Previewing deployment";
+            echo "    Deployment  ${deployment}";
             echo "    Manifest    ${manifest}";
             echo "    Project     ${GCLOUD_PROJECT_ID}";
           done < <(find $(env.paths.infra) -name '*yaml');
@@ -262,8 +261,8 @@ stages:
       - bash: |
           while read manifest;
           do
-            name=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            if $(env.requiresPrefix); then name=$(env.prefix)-${name}; fi
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test ! -z $(env.pullRequest) || deployment=$(env.prefix)-${deployment};
             echo "Update:";
             echo "    Deployment  $name";
             echo "    Manifest    $manifest";
@@ -332,7 +331,7 @@ stages:
           while read bucket_src;
           do
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-            if $(env.requiresPrefix); then bucket=$(env.prefix)-${name}; fi
+            test ! -z $(env.pullRequest) || bucket=$(env.prefix)-${bucket};
             echo gsutil ls gs://$bucket
           done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
         displayName: Check if the buckets exists
@@ -340,8 +339,9 @@ stages:
       - bash: |
           while read bucket_src;
           do
+
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-            if $(env.requiresPrefix); then bucket=$(env.prefix)-${name}; fi
+            test ! -z $(env.pullRequest) || bucket=$(env.prefix)-${bucket};
 
             if test -f ${bucket_src}/.ci/delete-extra-files;
             then
