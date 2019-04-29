@@ -73,8 +73,6 @@ variables:
   value: gcp
 - name: env.name
   value: $[ coalesce(variables['System.PullRequest.TargetBranch'], variables['Build.SourceBranchName']) ]
-- name: env.pullRequest
-  value: $(System.PullRequest.PullRequestNumber)
 - name: env.prefix
   value: $[ format('pr{0}', variables['System.PullRequest.PullRequestNumber']) ]
 # Paths
@@ -102,8 +100,9 @@ stages:
           echo "Trigger information:"
           echo "  Reason          $(Build.Reason)"
           echo "  Environment     $(env.name)"
-          echo "  PullRequestId   $(env.pullRequest)"
-          test ! -z $(env.pullRequest) || echo "  Prefix          $(env.prefix)";
+          if ${BUILD_REASON} == 'PullRequest'; then
+          echo "  Prefix          $(env.prefix)";
+          fi
           echo "  Provider        $(env.provider)"
           echo "  Path Infra      $(env.paths.infra)"
           echo "  Path Storage    $(env.paths.storage)"
@@ -157,7 +156,6 @@ stages:
           if test ! -z ${GCLOUD_PROJECT_ID:-};
           then
             echo "[i] GCLOUD_PROJECT_ID project set to ${GCLOUD_PROJECT_ID}.";
-            PROJECT_STATUS=
             if test ACTIVE == $(gcloud projects describe ${GCLOUD_PROJECT_ID} \
               --format="value(lifecycleState)"
             );
@@ -238,15 +236,54 @@ stages:
         env:
           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
+      - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
       - bash: |
           while read manifest;
           do
+
+            if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            test ! -z $(env.pullRequest) || deployment=$(env.prefix)-${deployment};
+
+            if test ! -z $(gcloud deployment-manager deployments list \
+              --format="value(name)" --filter="name:${deployment}");
+            then
+              gcloud deployment-manager deployments describe ${deployment};
+            else
+              gcloud deployment-manager deployments create ${deployment} \
+                --config <(echo "resources:") \
+                  || echo "[!] Unable to create ${deployment} empty deployment.";
+            fi
+
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Checking deployment
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+      - bash: |
+          while read manifest;
+          do
+
+            if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
+            deployment=${PREFIX}-$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+
             echo "[i] Previewing deployment";
             echo "    Deployment  ${deployment}";
             echo "    Manifest    ${manifest}";
             echo "    Project     ${GCLOUD_PROJECT_ID}";
+
+            gcloud deployment-manager deployments update ${deployment} \
+              --config ${deployment} --preview \
+              --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+              || { "[!] Previewing of ${deployment} failed."; exit 1; }
+
+              gcloud deployment-manager deployments cancel-preview ${deployment} \
+              || { "[!] Preview cancel of ${deployment} failed."; exit 1; }
+
           done < <(find $(env.paths.infra) -name '*yaml');
         displayName: Preview changes with deployment manager
         env:
@@ -258,15 +295,35 @@ stages:
     dependsOn:
       - InfrastructureDiff
     steps:
+
+      - script: >
+          gcloud auth activate-service-account
+          --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
       - bash: |
           while read manifest;
           do
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-            test ! -z $(env.pullRequest) || deployment=$(env.prefix)-${deployment};
+            test -z $(env.pullRequest) || deployment=$(env.prefix)-${deployment};
             echo "Update:";
-            echo "    Deployment  $name";
+            echo "    Deployment  $deployment";
             echo "    Manifest    $manifest";
             echo "    Project     ${GCLOUD_PROJECT_ID}";
+
+            gcloud deployment-manager deployments update \
+              ${deployment} --config ${deployment} \
+              --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+                || { "[!] Update of ${deployment} failed."; exit 1; }
+
           done < <(find $(env.paths.infra) -name '*yaml');
         displayName: Apply changes with deployment manager
         env:
@@ -330,8 +387,8 @@ stages:
       - bash: |
           while read bucket_src;
           do
+            if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-            test ! -z $(env.pullRequest) || bucket=$(env.prefix)-${bucket};
             echo gsutil ls gs://$bucket
           done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
         displayName: Check if the buckets exists
@@ -340,8 +397,8 @@ stages:
           while read bucket_src;
           do
 
+            if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-            test ! -z $(env.pullRequest) || bucket=$(env.prefix)-${bucket};
 
             if test -f ${bucket_src}/.ci/delete-extra-files;
             then
