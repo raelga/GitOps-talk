@@ -12,7 +12,6 @@ pr:
   branches:
     include: # branch names which will trigger a build
       - stg
-      - int
       - pro
     exclude: # branch names which will not trigger a build
       - master
@@ -34,7 +33,6 @@ trigger:
     include: # branch names which will trigger a build
       - base
       - stg
-      - int
       - pro
     exclude: # branch names which will not trigger a build
       - master
@@ -47,7 +45,6 @@ trigger:
     - helpers/*
     - scripts/*
     - docker/*
-
 
 #
 # Setup pipeline environment
