@@ -551,9 +551,9 @@ stages:
       - bash: |
           if egrep -q '[a-z]+-[a-z]+[0-9]-[a-z]' <<<${K8S_CLUSTER_LOCATION};
           then
-            GCLOUD_CLUSTER_LOCATION_FLAG="--region ${K8S_CLUSTER_LOCATION}";
-          else
             GCLOUD_CLUSTER_LOCATION_FLAG="--zone ${K8S_CLUSTER_LOCATION}";
+          else
+            GCLOUD_CLUSTER_LOCATION_FLAG="--region ${K8S_CLUSTER_LOCATION}";
           fi
         displayName: Set GKE cluster location flag
 
