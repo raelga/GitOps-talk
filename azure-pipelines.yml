@@ -74,7 +74,7 @@ variables:
 - name: env.name
   value: $[ coalesce(variables['System.PullRequest.TargetBranch'], variables['Build.SourceBranchName']) ]
 - name: env.prefix
-  value: $[ format('pr{0}-', variables['System.PullRequest.PullRequestNumber']) ]
+  value: $[ format('pr{0}', variables['System.PullRequest.PullRequestNumber']) ]
 # Paths
 - name: env.paths.infra
   value: infra/$(env.provider)/deployments/$(env.name)
@@ -100,9 +100,7 @@ stages:
           echo "Trigger information:"
           echo "  Reason          $(Build.Reason)"
           echo "  Environment     $(env.name)"
-          if "${BUILD_REASON}" == 'PullRequest'; then
           echo "  Prefix          $(env.prefix)";
-          fi
           echo "  Provider        $(env.provider)"
           echo "  Path Infra      $(env.paths.infra)"
           echo "  Path Storage    $(env.paths.storage)"
@@ -241,12 +239,17 @@ stages:
         env:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
+      - script: >
+          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
+        displayName: Set ENV_PREFIX if required
+        condition: eq(Build.Reason, 'PullRequest')
+
       - bash: |
           while read manifest;
           do
 
-            if "${BUILD_REASON}" == 'PullRequest'; then PREFIX=$(env.prefix); fi
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test -z ${PREFIX:-} || deployment=${PREFIX}-${deployment};
 
             if test ! -z $(gcloud deployment-manager deployments list \
               --format="value(name)" --filter="name:${deployment}");
@@ -267,8 +270,8 @@ stages:
           while read manifest;
           do
 
-            if "${BUILD_REASON}" == 'PullRequest'; then PREFIX=$(env.prefix); fi
-            deployment=${PREFIX}$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            deployment=$(sed "s#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#" <<< ${manifest});
+            test -z ${PREFIX:-} || deployment=${PREFIX}-${deployment};
 
             echo "[i] Previewing deployment";
             echo "    Deployment  ${deployment}";
@@ -308,12 +311,17 @@ stages:
         env:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
+      - script: >
+          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
+        displayName: Set ENV_PREFIX if required
+        condition: eq(Build.Reason, 'PullRequest')
+
       - bash: |
           while read manifest;
           do
 
-            if "${BUILD_REASON}" == 'PullRequest'; then PREFIX=$(env.prefix); fi
-            deployment=${PREFIX}$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${deployment};
 
             echo "Update:";
             echo "    Deployment  $deployment";
@@ -352,11 +360,17 @@ stages:
         env:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
+      - script: >
+          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
+        displayName: Set ENV_PREFIX if required
+        condition: eq(Build.Reason, 'PullRequest')
+
       - bash: |
           while read manifest;
           do
-            if "${BUILD_REASON}" == 'PullRequest'; then PREFIX=$(env.prefix); fi
-            deployment=${PREFIX}$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${deployment};
 
             if test -n $(gcloud deployment-manager deployments list \
               --format="value(name)" --filter="name:${deployment}");
@@ -436,12 +450,17 @@ stages:
         env:
           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
+      - script: >
+          echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
+        displayName: Set ENV_PREFIX if required
+
       - bash: |
           while read bucket_src;
           do
-            if "${BUILD_REASON}" == 'PullRequest'; then PREFIX=$(env.prefix); fi
+
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-            echo gsutil ls gs://$bucket
+            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${bucket};
+
           done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
         displayName: Check if the buckets exists
 
@@ -449,8 +468,8 @@ stages:
           while read bucket_src;
           do
 
-            if "${BUILD_REASON}" == 'PullRequest'; then PREFIX=$(env.prefix); fi
             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
+            test -z ${ENV_PREFIX:-} || deployment=${ENV_PREFIX}-${bucket};
 
             if test -f ${bucket_src}/.ci/delete-extra-files;
             then
