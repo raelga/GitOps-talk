@@ -328,6 +328,11 @@ stages:
             echo "    Manifest    $manifest";
             echo "    Project     ${GCLOUD_PROJECT_ID}";
 
+            gcloud deployment-manager deployments update ${deployment} \
+              --config ${manifest} --preview \
+              --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+              || { "[!] Previewing of ${deployment} failed."; exit 1; }
+
             gcloud deployment-manager deployments update \
               ${deployment} --config ${manifest} \
               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
