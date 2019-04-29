@@ -12,16 +12,15 @@ resources:
         subnet: gke-stg-sn
         region: europe-west1
       nodePools:
-        - name: compute-pad-g1s
+        - name: gce-pad-g1s
           machineType: g1-small
-          imageType: cos_containerd
-          preemptible: true
-          autoscaling: true
-          maxNodeCount: 6
+          maxNodeCount: 5
 
 outputs:
   - name: cluster-name
     value: $(ref.kubernetes-cluster.name)
+  - name: cluster-location
+    value: $(ref.kubernetes-cluster.location)
   - name: cluster-endpoint
     value: $(ref.kubernetes-cluster.endpoint)
   - name: cluster-traefik-lb-address
