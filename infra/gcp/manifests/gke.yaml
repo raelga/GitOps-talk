@@ -6,15 +6,22 @@ resources:
   - name: kubernetes-cluster
     type: ../../templates/container/kubernetes-cluster.jinja
     properties:
-      type: LOCAL
+      # Type: Can be REGIONAL or LOCAL
+      type: ___CLUSTER_TYPE___
       network:
         name: base-net
-        subnet: gke-stg-sn
+        #  Subnet: Can be gke-dev-sn, gke-stg-sn or gke-pro-sn
+        subnet: ___CLUSTER_SUBNET___
+        # For REGIONAL cluster
+        region: europe-west1
+        # For LOCAL cluster
         zone: europe-west1-b
       nodePools:
-        - name: gce-pad-g1s
+        - name: compute-pad-g1s
           machineType: g1-small
-          maxNodeCount: 5
+          # preemptible: true (default value)
+          # autoscaling: true (default value)
+          # maxNodeCount: 5 (default value)
 
 outputs:
   - name: cluster-name
