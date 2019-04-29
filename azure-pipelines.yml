@@ -329,6 +329,51 @@ stages:
         env:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
+  - jobs: InfrastructureCleanup
+    displayName: Clean up
+    container: gcloud
+    dependsOn:
+      - InfrastructureDiff
+      - InfrastructureApply
+    condition: failed()
+    steps:
+
+      - script: >
+          gcloud auth activate-service-account
+          --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+      - bash: |
+          while read manifest;
+          do
+            if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
+            deployment=${PREFIX}-$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+
+            if grep -q '- id' <(gcloud deployment-manager deployments \
+              describe ${deployment} --format="yaml(resources[].id);
+            then
+              echo "Clean up empty deployment:";
+              echo "    Deployment  $deployment";
+              echo "    Manifest    $manifest";
+              echo "    Project     ${GCLOUD_PROJECT_ID}";
+
+              gcloud deployment-manager deployments delete \
+                ${deployment} --delete-policy ABANDON \
+                || { "[!] Delete of ${deployment} failed."; exit 1; }
+
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Delete empty deployment manager deployments
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
 - stage: Storage
   displayName: Storage
   jobs:
