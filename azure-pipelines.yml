@@ -242,7 +242,7 @@ stages:
       - script: >
           echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
         displayName: Set ENV_PREFIX if required
-        condition: eq(Build.Reason, 'PullRequest')
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
           while read manifest;
@@ -314,7 +314,7 @@ stages:
       - script: >
           echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
         displayName: Set ENV_PREFIX if required
-        condition: eq(Build.Reason, 'PullRequest')
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
           while read manifest;
@@ -368,7 +368,7 @@ stages:
       - script: >
           echo '##vso[task.setvariable variable=ENV_PREFIX]$(env.prefix)'
         displayName: Set ENV_PREFIX if required
-        condition: eq(Build.Reason, 'PullRequest')
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
           while read manifest;
