@@ -518,16 +518,19 @@ stages:
           );
           if test ${GKE_MANIFEST_COUNT} -eq 0;
           then
-            echo "[i] No cluster manifest found, skipping kubernetes stage.";
+            echo "[i] No cluster deployment manifest found, skipping kubernetes stage.";
             echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
           elif test ${GKE_MANIFEST_COUNT} -gt 1;
           then
-            echo "[!] More than one cluster manifest found.";
+            echo "[!] More than one cluster deployment manifest found.";
             echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
             exit 1;
           else
-            echo "[i] Cluster manifest found.";
+            manifest=$(egrep -rlo '^\s+- name.\s+cluster-name' $(env.paths.infra));
+            echo "[i] GKE cluster deployment manifest found at ${manifest}";
+            # Outputs
             echo "##vso[task.setvariable variable=Exists;isOutput=true]true"
+            echo "##vso[task.setvariable variable=Path;isOutput=true]${manifest}"
           fi
         name: k8sManifest
         displayName: Check GKE infrastructure manifests
@@ -542,27 +545,43 @@ stages:
     steps:
 
       - script: >
-          gcloud auth activate-service-account
+          gcloud auth activate-service-account \
             --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
         displayName: Activate Google Cloud SDK service account
         env:
           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
       - script: >
-          K8S_CLUSTER_LOCATION=$(
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
+        condition: eq(variables['Build.Reason'], 'PullRequest')
+
+      - bash: >
+
+          deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${MANIFEST});
+          test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
+
+          GCLOUD_CLUSTER_LOCATION=$(
             sed -n 's/^cluster-location\s\+\(.*\)/\1/p'
             <(gcloud --project ${GCLOUD_PROJECT_ID} \
-              deployment-manager deployments describe ${K8S_CLUSTER});
+              deployment-manager deployments describe ${deployment});
+
+          GCLOUD_CLUSTER_NAME=$(
+            sed -n 's/^cluster-name\s\+\(.*\)/\1/p'
+            <(gcloud --project ${GCLOUD_PROJECT_ID} \
+              deployment-manager deployments describe ${deployment});
+
         displayName: Get GKE cluster location
         env:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+          MANIFEST: $[ dependencies.CheckClusterManifests.outputs['k8sManifest.Path'] ]
 
       - bash: |
-          if egrep -q '[a-z]+-[a-z]+[0-9]-[a-z]' <<<${K8S_CLUSTER_LOCATION};
+          if egrep -q '[a-z]+-[a-z]+[0-9]-[a-z]' <<<${GCLOUD_CLUSTER_LOCATION};
           then
-            GCLOUD_CLUSTER_LOCATION_FLAG="--zone ${K8S_CLUSTER_LOCATION}";
+            GCLOUD_CLUSTER_LOCATION_FLAG="--zone ${GCLOUD_CLUSTER_LOCATION}";
           else
-            GCLOUD_CLUSTER_LOCATION_FLAG="--region ${K8S_CLUSTER_LOCATION}";
+            GCLOUD_CLUSTER_LOCATION_FLAG="--region ${GCLOUD_CLUSTER_LOCATION}";
           fi
         displayName: Set GKE cluster location flag
 
@@ -577,5 +596,6 @@ stages:
           fi
         displayName: Retrieve GKE cluster credentials
 
-      - script: >
-          echo kubectl get pods
+      - bash: >
+          echo $GCLOUD_CLUSTER_LOCATION_FLAG
+          echo $GCLOUD_CLUSTER_NAME
