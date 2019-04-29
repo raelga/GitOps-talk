@@ -78,7 +78,7 @@ variables:
 - name: env.paths.storage
   value: storage/$(env.name)
 - name: env.paths.k8s
-  value: k8s/$(env.name)
+  value: k8s/overlays/$(env.name)
 
 #
 # Setup pipeline stages
