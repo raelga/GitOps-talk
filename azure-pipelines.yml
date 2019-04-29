@@ -491,12 +491,12 @@ stages:
 
             if test -f ${bucket_src}/.ci/delete-extra-files;
             then
-              echo "Sync deleting extra files.";
+              echo "Sync deleting extra files not present in origin.";
               echo "  Source        ${bucket_src}";
               echo "  Destination   ${bucket}";
               gsutil rsync -R -J -C -c -d ${bucket_src}/ gs://${bucket}
             else
-              echo "Sync without deleting extra files."
+              echo "Sync without deleting extra files not present in remote."
               echo "  Source        ${bucket_src}";
               echo "  Destination   ${bucket}";
               gsutil rsync -R -J -C -c ${bucket_src}/ gs://${bucket}
