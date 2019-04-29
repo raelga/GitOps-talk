@@ -90,19 +90,23 @@ stages:
   displayName: Environment
   jobs:
 
-  - job: VarsCheck
+  - job: EnvPrint
     displayName: Check vars
     steps:
       - bash: |
           echo "Trigger information:"
           echo "  Reason          $(Build.Reason)"
           echo "  Environment     $(env.name)"
-          echo "  Prefix          $(env.prefix)";
           echo "  Provider        $(env.provider)"
           echo "  Path Infra      $(env.paths.infra)"
           echo "  Path Storage    $(env.paths.storage)"
           echo "  Path K8S        $(env.paths.k8s)"
-        displayName: Check environment variables
+        displayName: Print trigger information
+
+      - script: |
+          echo "  Prefix          $(env.prefix)"
+        displayName: Print prefix information
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
   - job: GoogleCloudEnvCheck
     displayName: Check gcloud
