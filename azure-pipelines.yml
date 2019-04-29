@@ -74,7 +74,7 @@ variables:
 - name: env.name
   value: $[ coalesce(variables['System.PullRequest.TargetBranch'], variables['Build.SourceBranchName']) ]
 - name: env.prefix
-  value: $[ format('pr{0}', variables['System.PullRequest.PullRequestNumber']) ]
+  value: $[ format('pr{0}-', variables['System.PullRequest.PullRequestNumber']) ]
 # Paths
 - name: env.paths.infra
   value: infra/$(env.provider)/deployments/$(env.name)
@@ -268,7 +268,7 @@ stages:
           do
 
             if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
-            deployment=${PREFIX}-$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            deployment=${PREFIX}$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
 
             echo "[i] Previewing deployment";
             echo "    Deployment  ${deployment}";
@@ -313,7 +313,7 @@ stages:
           do
 
             if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
-            deployment=${PREFIX}-$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            deployment=${PREFIX}$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
 
             echo "Update:";
             echo "    Deployment  $deployment";
@@ -330,7 +330,7 @@ stages:
         env:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-  - jobs: InfrastructureCleanup
+  - job: InfrastructureCleanup
     displayName: Clean up
     container: gcloud
     dependsOn:
@@ -356,10 +356,10 @@ stages:
           while read manifest;
           do
             if ${BUILD_REASON} == 'PullRequest'; then PREFIX=$(env.prefix); fi
-            deployment=${PREFIX}-$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            deployment=${PREFIX}$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
 
             if grep -q '- id' <(gcloud deployment-manager deployments \
-              describe ${deployment} --format="yaml(resources[].id);
+              describe ${deployment} --format="yaml(resources[].id)");
             then
               echo "Clean up empty deployment:";
               echo "    Deployment  $deployment";
@@ -369,7 +369,7 @@ stages:
               gcloud deployment-manager deployments delete \
                 ${deployment} --delete-policy ABANDON \
                 || { "[!] Delete of ${deployment} failed."; exit 1; }
-
+            fi
           done < <(find $(env.paths.infra) -name '*yaml');
         displayName: Delete empty deployment manager deployments
         env:
