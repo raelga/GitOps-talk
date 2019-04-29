@@ -418,10 +418,10 @@ stages:
 #           if test -d $(env.paths.storage);
 #           then
 #             echo "[i] $(env.paths.storage) folder found.";
-#             echo "##vso[task.setvariable variable=Exists;isOutput=true]true";
+#             echo "##vso[task.setvariable variable=exists;isOutput=true]true";
 #           else
 #             echo "[i] No storage folder found, skipping storage stage.";
-#             echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+#             echo "##vso[task.setvariable variable=exists;isOutput=true]false";
 #           fi
 #         name: storageFolder
 #         displayName: Check if the storage folder exists
@@ -433,13 +433,13 @@ stages:
 #           if test ${STORAGE_SOURCES_COUNT} -gt 0;
 #           then
 #             echo "[i] ${STORAGE_SOURCES_COUNT} storage sources found.";
-#             echo "##vso[task.setvariable variable=Exists;isOutput=true]true";
+#             echo "##vso[task.setvariable variable=exists;isOutput=true]true";
 #           else
 #             echo "[i] No storage sources found, skipping storage stage.";
-#             echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+#             echo "##vso[task.setvariable variable=exists;isOutput=true]false";
 #           fi
 #         name: storageSources
-#         condition: eq(variables['storageFolder.Exists'],'true')
+#         condition: eq(variables['storageFolder.exists'],'true')
 #         displayName: Check if there are storage source folders
 
 #   - job: UpdateStorage
@@ -449,8 +449,8 @@ stages:
 #       - CheckStorage
 #     condition:
 #       and(
-#         eq(dependencies.CheckStorage.outputs['storageFolder.Exists'],'true'),
-#         eq(dependencies.CheckStorage.outputs['storageSources.Exists'],'true')
+#         eq(dependencies.CheckStorage.outputs['storageFolder.exists'],'true'),
+#         eq(dependencies.CheckStorage.outputs['storageSources.exists'],'true')
 #       )
 #     steps:
 
@@ -509,7 +509,7 @@ stages:
   jobs:
 
   - job: CheckClusterManifests
-    displayName: Check k8s manifests
+    displayName: Check GKE manifests
     steps:
 
       - bash: |
@@ -519,17 +519,17 @@ stages:
           if test ${GKE_MANIFEST_COUNT} -eq 0;
           then
             echo "[i] No cluster deployment manifest found, skipping kubernetes stage.";
-            echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]false";
           elif test ${GKE_MANIFEST_COUNT} -gt 1;
           then
             echo "[!] More than one cluster deployment manifest found.";
-            echo "##vso[task.setvariable variable=Exists;isOutput=true]false";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]false";
             exit 1;
           else
             manifest=$(egrep -rlo '^\s+- name.\s+cluster-name' $(env.paths.infra));
             echo "[i] GKE cluster deployment manifest found at ${manifest}";
             # Outputs
-            echo "##vso[task.setvariable variable=Exists;isOutput=true]true"
+            echo "##vso[task.setvariable variable=exists;isOutput=true]true"
             echo "##vso[task.setvariable variable=Path;isOutput=true]${manifest}"
           fi
         name: k8sManifest
@@ -537,11 +537,14 @@ stages:
 
 
   - job: CheckCluster
-    displayName: Check k8s cluster
-    container: gcloud
+    displayName: Check GKE cluster
+    container: gitopsci
     dependsOn: CheckClusterManifests
     condition: >
-      eq(dependencies.CheckClusterManifests.outputs['k8sManifest.Exists'],'true')
+      eq(dependencies.CheckClusterManifests.outputs['k8sManifest.exists'],'true')
+    variables:
+      - name: env.gkeManifest
+        value: $[ dependencies.CheckClusterManifests.outputs['k8sManifest.path'] ]
     steps:
 
       - script: >
@@ -552,50 +555,74 @@ stages:
           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
       - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+      - script: >
           echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
         displayName: Set environment prefix if required
         condition: eq(variables['Build.Reason'], 'PullRequest')
 
-      - bash: >
-
-          deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${MANIFEST});
+      - bash: |
+          deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< $(env.gkeManifest));
           test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
-
-          GCLOUD_CLUSTER_LOCATION=$(
-            sed -n 's/^cluster-location\s\+\(.*\)/\1/p'
-            <(gcloud --project ${GCLOUD_PROJECT_ID} \
-              deployment-manager deployments describe ${deployment});
-
-          GCLOUD_CLUSTER_NAME=$(
-            sed -n 's/^cluster-name\s\+\(.*\)/\1/p'
-            <(gcloud --project ${GCLOUD_PROJECT_ID} \
-              deployment-manager deployments describe ${deployment});
-
-        displayName: Get GKE cluster location
-        env:
-          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
-          MANIFEST: $[ dependencies.CheckClusterManifests.outputs['k8sManifest.Path'] ]
+          echo "[i] GKE deployment name is ${deployment}";
+          echo "##vso[task.setvariable variable=name;isOutput=true]${deployment}";
+        name: gkeDeployment
+        displayName: Getting the GKE cluster deployment name
 
       - bash: |
+          GCLOUD_CLUSTER_NAME=$(gcloud deployment-manager deployments \
+            describe $(gkeDeployment.name) \
+            --format='get[](outputs.name.cluster-name.finalValue)' \
+          );
+          if test -n "${GCLOUD_CLUSTER_NAME}";
+          then
+            echo "[i] GCLOUD_CLUSTER_NAME set to ${GCLOUD_CLUSTER_NAME}";
+          else
+            echo "[i] Unable to get `cluster-name` output from $(gkeDeployment.name) deployment.";
+            exit 1;
+          fi
+
+          GCLOUD_CLUSTER_LOCATION=$(gcloud deployment-manager deployments \
+            describe $(gkeDeployment.name) \
+            --format='get[](outputs.name.cluster-location.finalValue)'
+          );
+          if test -n "${GCLOUD_CLUSTER_LOCATION}";
+          then
+            echo "[i] GCLOUD_CLUSTER_LOCATION set to ${GCLOUD_CLUSTER_LOCATION}";
+          else
+            echo "[i] Unable to get `cluster-location` output from $(gkeDeployment.name) deployment.";
+            exit 1;
+          fi
+
           if egrep -q '[a-z]+-[a-z]+[0-9]-[a-z]' <<<${GCLOUD_CLUSTER_LOCATION};
           then
             GCLOUD_CLUSTER_LOCATION_FLAG="--zone ${GCLOUD_CLUSTER_LOCATION}";
           else
             GCLOUD_CLUSTER_LOCATION_FLAG="--region ${GCLOUD_CLUSTER_LOCATION}";
           fi
-        displayName: Set GKE cluster location flag
+          echo "[i] GCLOUD_CLUSTER_LOCATION_FLAG set to ${GCLOUD_CLUSTER_LOCATION_FLAG}";
 
-      - bash:
-          if gcloud --project ${GCLOUD_PROJECT_ID} \
-              container clusters get-credentials ${K8S_CLUSTER} \
-              ${GCLOUD_CLUSTER_LOCATION_FLAG};
+          # Outputs
+          echo "##vso[task.setvariable variable=name;isOutput=true]${GCLOUD_CLUSTER_NAME}";
+          echo "##vso[task.setvariable variable=location;isOutput=true]${GCLOUD_CLUSTER_LOCATION}";
+          echo "##vso[task.setvariable variable=locationFlag;isOutput=true]${GCLOUD_CLUSTER_LOCATION_FLAG}";
+        name: gkeCluster
+        displayName: Getting GKE cluster info
+
+      - bash: |
+          if gcloud container clusters get-credentials $(gkeCluster.name) \
+            $(gkeCluster.locationFlag);
           then
-            echo "[i] kubectl cluster set to ${K8S_CLUSTER}.";
+            echo "[i] kubectl cluster set to $(kubectl config current-context).";
           else
-            echo "[!] unable to retrieve cluster credentials.";
+            echo "[!] Unable to retrieve cluster credentials.";
+            exit 1;
           fi
-        displayName: Retrieve GKE cluster credentials
+          kubectl cluster-info \
+            || {echo "[!] Unable to connect to the GKE cluster."; exit 1; }
+        displayName: Check GKE cluster credentials
 
-      - bash: >
-          echo $GCLOUD_CLUSTER_LOCATION_FLAG
-          echo $GCLOUD_CLUSTER_NAME
