@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+- ../../../kustomize-bases/gitopsapp
+
+resources:
+- ./resources/pro-ingress.yaml
+
+patches:
+- ./patches/deployment_replica_count.yaml
+- ./patches/cm_talk.yaml
+- ./patches/cm_bucket.yaml
+- ./patches/deployment_app_resources.yaml
+
+images:
+- name: rvazquez/gitops-demo-front
+  newTag: "0.2.0"

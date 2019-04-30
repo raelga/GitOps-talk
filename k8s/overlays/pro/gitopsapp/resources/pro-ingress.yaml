@@ -1,0 +1,14 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: gitopsapp-pro
+spec:
+  rules:
+  - host: production.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: gitopsapp
+          servicePort: http
