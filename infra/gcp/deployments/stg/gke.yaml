@@ -10,7 +10,7 @@ resources:
       network:
         name: base-net
         subnet: gke-stg-sn
-        zone: europe-west1-b
+        zone: europe-west1-c
       nodePools:
         - name: compute-pad-g1s
           machineType: g1-small
