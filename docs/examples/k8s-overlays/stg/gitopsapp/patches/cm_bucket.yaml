@@ -19,4 +19,4 @@ kind: ConfigMap
 metadata:
   name: gitopsapp
 data:
-  bucket: storage.googleapis.com/___BUCKET_NAME___
+  bucket: storage.googleapis.com/pr3-stg-statics-bucket

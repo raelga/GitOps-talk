@@ -3,4 +3,4 @@ kind: Deployment
 metadata:
   name: gitopsapp
 spec:
-  replicas: 6
+  replicas: 5
