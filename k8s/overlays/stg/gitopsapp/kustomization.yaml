@@ -3,3 +3,15 @@ kind: Kustomization
 
 bases:
 - ../../../kustomize-bases/gitopsapp
+
+patches:
+- ./patches/deployment_replica_count.yaml
+- ./patches/cm_talk.yaml
+- ./patches/cm_bucket.yaml
+
+images:
+- name: rvazquez/gitops-demo-front
+  newTag: "0.2.0"
+
+commonLabels:
+  version: v2
