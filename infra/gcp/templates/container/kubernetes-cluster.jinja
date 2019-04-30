@@ -385,7 +385,7 @@ resources:
 - name: {{ CLUSTER_NAME }}-k8s-traefik-srv-root-dns-rs
   type: gcp-types/dns-v1:resourceRecordSets
   properties:
-    name: "{{ CLUSTER_NAME }}.{{ properties.network.dnsZone.fqdn }}"
+    name: "{{ CLUSTER_NAME }}.{{ properties.network.dnsZone.fqdn }}."
     managedZone: {{ properties.network.dnsZone.name }}
     records:
     - type: A
@@ -396,7 +396,7 @@ resources:
 - name: {{ CLUSTER_NAME }}-k8s-traefik-srv-wildcard-dns-rs
   type: gcp-types/dns-v1:resourceRecordSets
   properties:
-    name: "*.{{ CLUSTER_NAME }}.{{ properties.network.dnsZone.fqdn }}"
+    name: "*.{{ CLUSTER_NAME }}.{{ properties.network.dnsZone.fqdn }}."
     managedZone: {{ properties.network.dnsZone.name }}
     records:
     - type: A
