@@ -86,423 +86,423 @@ variables:
 
 stages:
 
-# - stage: Environment
-#   displayName: Environment
-#   jobs:
+- stage: Environment
+  displayName: Environment
+  jobs:
 
-#   - job: EnvPrint
-#     displayName: Check vars
-#     steps:
-#       - bash: |
-#           echo "Trigger information:"
-#           echo "  Reason          $(Build.Reason)"
-#           echo "  Environment     $(env.name)"
-#           echo "  Provider        $(env.provider)"
-#           echo "  Path Infra      $(env.paths.infra)"
-#           echo "  Path Storage    $(env.paths.storage)"
-#           echo "  Path K8S        $(env.paths.k8s)"
-#         displayName: Print trigger information
+  - job: EnvPrint
+    displayName: Check vars
+    steps:
+      - bash: |
+          echo "Trigger information:"
+          echo "  Reason          $(Build.Reason)"
+          echo "  Environment     $(env.name)"
+          echo "  Provider        $(env.provider)"
+          echo "  Path Infra      $(env.paths.infra)"
+          echo "  Path Storage    $(env.paths.storage)"
+          echo "  Path K8S        $(env.paths.k8s)"
+        displayName: Print trigger information
 
-#       - script: |
-#           echo "  Prefix          $(env.prefix)"
-#         displayName: Print prefix information
-#         condition: eq(variables['Build.Reason'], 'PullRequest')
+      - script: |
+          echo "  Prefix          $(env.prefix)"
+        displayName: Print prefix information
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
-#   - job: GoogleCloudEnvCheck
-#     displayName: Check gcloud
-#     container: gcloud
-#     steps:
+  - job: GoogleCloudEnvCheck
+    displayName: Check gcloud
+    container: gcloud
+    steps:
 
-#       - bash: |
-#           if which gcloud &> /dev/null;
-#           then
-#             echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
-#           else
-#             echo "[!] gcloud SDK is not installed."; exit 1;
-#           fi
-#         displayName: Check Google Cloud SDK version
+      - bash: |
+          if which gcloud &> /dev/null;
+          then
+            echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
+          else
+            echo "[!] gcloud SDK is not installed."; exit 1;
+          fi
+        displayName: Check Google Cloud SDK version
 
-#       - bash: |
-#           if which gsutil &> /dev/null;
-#           then
-#             echo "[i] gsutil installed with $(gsutil version).";
-#           else
-#             echo "[!] gsutil is not installed."; exit 1;
-#           fi
-#         displayName: Check gsutil version
+      - bash: |
+          if which gsutil &> /dev/null;
+          then
+            echo "[i] gsutil installed with $(gsutil version).";
+          else
+            echo "[!] gsutil is not installed."; exit 1;
+          fi
+        displayName: Check gsutil version
 
-#       - bash: |
-#           if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
-#           then
-#             if gcloud auth activate-service-account \
-#                 --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
-#             then
-#               echo "[i] Service account $(gcloud config get-value account) set.";
-#             else
-#               echo "[!] Unable to activate the service account.";
-#               exit 1;
-#             fi
-#           else
-#             echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
-#             exit 1;
-#           fi
-#         displayName: Check Google Cloud SDK service account
-#         env:
-#           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - bash: |
+          if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
+          then
+            if gcloud auth activate-service-account \
+                --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
+            then
+              echo "[i] Service account $(gcloud config get-value account) set.";
+            else
+              echo "[!] Unable to activate the service account.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-#       - bash: |
-#           if test ! -z ${GCLOUD_PROJECT_ID:-};
-#           then
-#             echo "[i] GCLOUD_PROJECT_ID project set to ${GCLOUD_PROJECT_ID}.";
-#             if test ACTIVE == $(gcloud projects describe ${GCLOUD_PROJECT_ID} \
-#               --format="value(lifecycleState)"
-#             );
-#             then
-#             echo "[i] ${GCLOUD_PROJECT_ID} project is ACTIVE.";
-#             else
-#               echo "[!] ${GCLOUD_PROJECT_ID} status must be active.";
-#               exit 1;
-#             fi
-#           else
-#             echo "[!] GCLOUD_PROJECT_ID environment variable must be set.";
-#             exit 1;
-#           fi
-#         displayName: Check Google Cloud SDK project
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+      - bash: |
+          if test ! -z ${GCLOUD_PROJECT_ID:-};
+          then
+            echo "[i] GCLOUD_PROJECT_ID project set to ${GCLOUD_PROJECT_ID}.";
+            if test ACTIVE == $(gcloud projects describe ${GCLOUD_PROJECT_ID} \
+              --format="value(lifecycleState)"
+            );
+            then
+            echo "[i] ${GCLOUD_PROJECT_ID} project is ACTIVE.";
+            else
+              echo "[!] ${GCLOUD_PROJECT_ID} status must be active.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_PROJECT_ID environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-#   - job: gitopsciEnvCheck
-#     displayName: Check gitopsci
-#     container: gitopsci
-#     steps:
+  - job: gitopsciEnvCheck
+    displayName: Check gitopsci
+    container: gitopsci
+    steps:
 
-#       - bash: |
-#           if which gcloud &> /dev/null;
-#           then
-#             echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
-#           else
-#             echo "[!] gcloud SDK is not installed."; exit 1;
-#           fi
-#         displayName: Check Google Cloud SDK version
+      - bash: |
+          if which gcloud &> /dev/null;
+          then
+            echo "[i] gcloud installed with $(gcloud version | grep 'Google Cloud SDK').";
+          else
+            echo "[!] gcloud SDK is not installed."; exit 1;
+          fi
+        displayName: Check Google Cloud SDK version
 
-#       - bash: |
-#           if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
-#           then
-#             if gcloud auth activate-service-account \
-#                 --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
-#             then
-#               echo "[i] Service account $(gcloud config get-value account) set.";
-#             else
-#               echo "[!] Unable to activate the service account.";
-#               exit 1;
-#             fi
-#           else
-#             echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
-#             exit 1;
-#           fi
-#         displayName: Check Google Cloud SDK service account
-#         env:
-#           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - bash: |
+          if test ! -z ${GCLOUD_SERVICE_ACCOUNT:-};
+          then
+            if gcloud auth activate-service-account \
+                --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d);
+            then
+              echo "[i] Service account $(gcloud config get-value account) set.";
+            else
+              echo "[!] Unable to activate the service account.";
+              exit 1;
+            fi
+          else
+            echo "[!] GCLOUD_SERVICE_ACCOUNT environment variable must be set.";
+            exit 1;
+          fi
+        displayName: Check Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-#       - bash: |
-#           if which kubectl &> /dev/null;
-#           then
-#             if test $(sed 's/.*Minor:"\([~0-9]\+\)".*/\1/' <(kubectl version --client=true 2>&1) ) -ge 14;
-#             then
-#               echo "[i] kubectl installed with $(kubectl version --client=true).";
-#             else
-#               echo "[!] kubectl minor version should be greather than 14."
-#             fi
-#           else
-#             echo "[!] kubectl is not installed."; exit 1;
-#           fi
-#         displayName: Check kubectl version
+      - bash: |
+          if which kubectl &> /dev/null;
+          then
+            if test $(sed 's/.*Minor:"\([~0-9]\+\)".*/\1/' <(kubectl version --client=true 2>&1) ) -ge 14;
+            then
+              echo "[i] kubectl installed with $(kubectl version --client=true).";
+            else
+              echo "[!] kubectl minor version should be greather than 14."
+            fi
+          else
+            echo "[!] kubectl is not installed."; exit 1;
+          fi
+        displayName: Check kubectl version
 
-# - stage: Infrastructure
-#   displayName: Infrastructure
-#   jobs:
+- stage: Infrastructure
+  displayName: Infrastructure
+  jobs:
 
-#   - job: InfrastructureDiff
-#     displayName: Preview changes
-#     container: gcloud
-#     steps:
+  - job: InfrastructureDiff
+    displayName: Preview changes
+    container: gcloud
+    steps:
 
-#       - script: >
-#           gcloud auth activate-service-account
-#           --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
-#         displayName: Activate Google Cloud SDK service account
-#         env:
-#           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - script: >
+          gcloud auth activate-service-account
+          --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-#       - script: >
-#           gcloud config set project ${GCLOUD_PROJECT_ID}
-#         displayName: Activate Google Cloud SDK project
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+      - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-#       - script: >
-#           echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
-#         displayName: Set environment prefix if required
-#         condition: eq(variables['Build.Reason'], 'PullRequest')
+      - script: >
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
-#       - bash: |
-#           while read manifest;
-#           do
+      - bash: |
+          while read manifest;
+          do
 
-#             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-#             test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
-#             if test ! -z $(gcloud deployment-manager deployments list \
-#               --format="value(name)" --filter="name:${deployment}");
-#             then
-#               echo "[i] ${deployment} already exists."
-#               gcloud deployment-manager deployments describe ${deployment};
-#             else
-#               if gcloud deployment-manager deployments create ${deployment} \
-#                 --config <(echo "resources:");
-#               then
-#                 echo "[i] Empty deployment for ${deployment} created.";
-#               else
-#                 echo "[!] Unable to create ${deployment} empty deployment.";
-#               fi
-#             fi
+            if test ! -z $(gcloud deployment-manager deployments list \
+              --format="value(name)" --filter="name:${deployment}");
+            then
+              echo "[i] ${deployment} already exists."
+              gcloud deployment-manager deployments describe ${deployment};
+            else
+              if gcloud deployment-manager deployments create ${deployment} \
+                --config <(echo "resources:");
+              then
+                echo "[i] Empty deployment for ${deployment} created.";
+              else
+                echo "[!] Unable to create ${deployment} empty deployment.";
+              fi
+            fi
 
-#           done < <(find $(env.paths.infra) -name '*yaml');
-#         displayName: Checking deployment
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Checking deployment
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-#       - bash: |
-#           while read manifest;
-#           do
+      - bash: |
+          while read manifest;
+          do
 
-#             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-#             test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
-#             echo "[i] Previewing deployment";
-#             echo "    Deployment  ${deployment}";
-#             echo "    Manifest    ${manifest}";
-#             echo "    Project     ${GCLOUD_PROJECT_ID}";
+            echo "[i] Previewing deployment";
+            echo "    Deployment  ${deployment}";
+            echo "    Manifest    ${manifest}";
+            echo "    Project     ${GCLOUD_PROJECT_ID}";
 
-#             gcloud deployment-manager deployments update ${deployment} \
-#               --config ${manifest} --preview \
-#               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
-#               || { "[!] Previewing of ${deployment} failed."; exit 1; }
+            gcloud deployment-manager deployments update ${deployment} \
+              --config ${manifest} --preview \
+              --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+              || { "[!] Previewing of ${deployment} failed."; exit 1; }
 
-#               gcloud deployment-manager deployments cancel-preview ${deployment} \
-#                  > /dev/null \
-#                 || { "[!] Preview cancel of ${deployment} failed."; exit 1; }
+              gcloud deployment-manager deployments cancel-preview ${deployment} \
+                 > /dev/null \
+                || { "[!] Preview cancel of ${deployment} failed."; exit 1; }
 
-#           done < <(find $(env.paths.infra) -name '*yaml');
-#         displayName: Preview changes with deployment manager
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Preview changes with deployment manager
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-#   - job: InfrastructureApply
-#     displayName: Apply changes
-#     container: gcloud
-#     dependsOn:
-#       - InfrastructureDiff
-#     steps:
+  - job: InfrastructureApply
+    displayName: Apply changes
+    container: gcloud
+    dependsOn:
+      - InfrastructureDiff
+    steps:
 
-#       - script: >
-#           gcloud auth activate-service-account
-#           --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
-#         displayName: Activate Google Cloud SDK service account
-#         env:
-#           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - script: >
+          gcloud auth activate-service-account
+          --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-#       - script: >
-#           gcloud config set project ${GCLOUD_PROJECT_ID}
-#         displayName: Activate Google Cloud SDK project
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+      - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-#       - script: >
-#           echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
-#         displayName: Set environment prefix if required
-#         condition: eq(variables['Build.Reason'], 'PullRequest')
+      - script: >
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
-#       - bash: |
-#           while read manifest;
-#           do
+      - bash: |
+          while read manifest;
+          do
 
-#             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-#             test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
-#             echo "Update:";
-#             echo "    Deployment  $deployment";
-#             echo "    Manifest    $manifest";
-#             echo "    Project     ${GCLOUD_PROJECT_ID}";
+            echo "Update:";
+            echo "    Deployment  $deployment";
+            echo "    Manifest    $manifest";
+            echo "    Project     ${GCLOUD_PROJECT_ID}";
 
-#             gcloud deployment-manager deployments update ${deployment} \
-#               --config ${manifest} --preview \
-#               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
-#               || { "[!] Previewing of ${deployment} failed."; exit 1; }
+            gcloud deployment-manager deployments update ${deployment} \
+              --config ${manifest} --preview \
+              --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+              || { "[!] Previewing of ${deployment} failed."; exit 1; }
 
-#             gcloud deployment-manager deployments update ${deployment} \
-#               --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
-#                 || { "[!] Update of ${deployment} failed."; exit 1; }
+            gcloud deployment-manager deployments update ${deployment} \
+              --create-policy CREATE_OR_ACQUIRE --delete-policy DELETE \
+                || { "[!] Update of ${deployment} failed."; exit 1; }
 
-#           done < <(find $(env.paths.infra) -name '*yaml');
-#         displayName: Apply changes with deployment manager
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Apply changes with deployment manager
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-#   - job: InfrastructureCleanup
-#     displayName: Clean up
-#     container: gcloud
-#     dependsOn:
-#       - InfrastructureDiff
-#       - InfrastructureApply
-#     condition: failed()
-#     steps:
+  - job: InfrastructureCleanup
+    displayName: Clean up
+    container: gcloud
+    dependsOn:
+      - InfrastructureDiff
+      - InfrastructureApply
+    condition: failed()
+    steps:
 
-#       - script: >
-#           gcloud auth activate-service-account
-#           --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
-#         displayName: Activate Google Cloud SDK service account
-#         env:
-#           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - script: >
+          gcloud auth activate-service-account
+          --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-#       - script: >
-#           gcloud config set project ${GCLOUD_PROJECT_ID}
-#         displayName: Activate Google Cloud SDK project
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+      - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-#       - script: >
-#           echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
-#         displayName: Set environment prefix if required
-#         condition: eq(variables['Build.Reason'], 'PullRequest')
+      - script: >
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
-#       - bash: |
-#           while read manifest;
-#           do
+      - bash: |
+          while read manifest;
+          do
 
-#             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
-#             test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
+            deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
+            test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
-#             if test -n $(gcloud deployment-manager deployments list \
-#               --format="value(name)" --filter="name:${deployment}");
-#             then
-#               if test 0 -eq $(grep -c -- '- id:' \
-#                 <(gcloud deployment-manager deployments \
-#                 describe ${deployment} --format="yaml(resources[].id)"
-#               );
-#               then
-#                 echo "Deleting empty deployment:";
-#                 echo "    Deployment  $deployment";
-#                 echo "    Manifest    $manifest";
-#                 echo "    Project     ${GCLOUD_PROJECT_ID}";
+            if test -n $(gcloud deployment-manager deployments list \
+              --format="value(name)" --filter="name:${deployment}");
+            then
+              if test 0 -eq $(grep -c -- '- id:' \
+                <(gcloud deployment-manager deployments \
+                describe ${deployment} --format="yaml(resources[].id)"
+              );
+              then
+                echo "Deleting empty deployment:";
+                echo "    Deployment  $deployment";
+                echo "    Manifest    $manifest";
+                echo "    Project     ${GCLOUD_PROJECT_ID}";
 
-#                 gcloud deployment-manager deployments delete \
-#                   ${deployment} --delete-policy ABANDON \
-#                   || { "[!] Delete of ${deployment} failed."; exit 1; }
-#               fi
-#             fi
-#           done < <(find $(env.paths.infra) -name '*yaml');
-#         displayName: Delete empty deployment manager deployments
-#         env:
-#           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+                gcloud deployment-manager deployments delete \
+                  ${deployment} --delete-policy ABANDON \
+                  || { "[!] Delete of ${deployment} failed."; exit 1; }
+              fi
+            fi
+          done < <(find $(env.paths.infra) -name '*yaml');
+        displayName: Delete empty deployment manager deployments
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
-# - stage: Storage
-#   displayName: Storage
-#   jobs:
+- stage: Storage
+  displayName: Storage
+  jobs:
 
-#   - job: CheckStorage
-#     displayName: Check sources
-#     steps:
+  - job: CheckStorage
+    displayName: Check sources
+    steps:
 
-#       - bash: |
-#           if test -d $(env.paths.storage);
-#           then
-#             echo "[i] $(env.paths.storage) folder found.";
-#             echo "##vso[task.setvariable variable=exists;isOutput=true]true";
-#           else
-#             echo "[i] No storage folder found, skipping storage stage.";
-#             echo "##vso[task.setvariable variable=exists;isOutput=true]false";
-#           fi
-#         name: storageFolder
-#         displayName: Check if the storage folder exists
+      - bash: |
+          if test -d $(env.paths.storage);
+          then
+            echo "[i] $(env.paths.storage) folder found.";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]true";
+          else
+            echo "[i] No storage folder found, skipping storage stage.";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]false";
+          fi
+        name: storageFolder
+        displayName: Check if the storage folder exists
 
-#       - bash: |
-#           STORAGE_SOURCES_COUNT=$( \
-#             find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d | wc -l
-#           );
-#           if test ${STORAGE_SOURCES_COUNT} -gt 0;
-#           then
-#             echo "[i] ${STORAGE_SOURCES_COUNT} storage sources found.";
-#             echo "##vso[task.setvariable variable=exists;isOutput=true]true";
-#           else
-#             echo "[i] No storage sources found, skipping storage stage.";
-#             echo "##vso[task.setvariable variable=exists;isOutput=true]false";
-#           fi
-#         name: storageSources
-#         condition: eq(variables['storageFolder.exists'],'true')
-#         displayName: Check if there are storage source folders
+      - bash: |
+          STORAGE_SOURCES_COUNT=$( \
+            find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d | wc -l
+          );
+          if test ${STORAGE_SOURCES_COUNT} -gt 0;
+          then
+            echo "[i] ${STORAGE_SOURCES_COUNT} storage sources found.";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]true";
+          else
+            echo "[i] No storage sources found, skipping storage stage.";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]false";
+          fi
+        name: storageSources
+        condition: eq(variables['storageFolder.exists'],'true')
+        displayName: Check if there are storage source folders
 
-#   - job: UpdateStorage
-#     displayName: Update content
-#     container: gcloud
-#     dependsOn:
-#       - CheckStorage
-#     condition:
-#       and(
-#         eq(dependencies.CheckStorage.outputs['storageFolder.exists'],'true'),
-#         eq(dependencies.CheckStorage.outputs['storageSources.exists'],'true')
-#       )
-#     steps:
+  - job: UpdateStorage
+    displayName: Update content
+    container: gcloud
+    dependsOn:
+      - CheckStorage
+    condition:
+      and(
+        eq(dependencies.CheckStorage.outputs['storageFolder.exists'],'true'),
+        eq(dependencies.CheckStorage.outputs['storageSources.exists'],'true')
+      )
+    steps:
 
-#       - bash: |
-#           gcloud auth activate-service-account \
-#             --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
-#         displayName: Activate Google Cloud SDK service account
-#         env:
-#           GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+      - bash: |
+          gcloud auth activate-service-account \
+            --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
 
-#       - script: >
-#           echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
-#         displayName: Set environment prefix if required
-#         condition: eq(variables['Build.Reason'], 'PullRequest')
+      - script: >
+          echo '##vso[task.setvariable variable=PREFIX]$(env.prefix)'
+        displayName: Set environment prefix if required
+        condition: eq(variables['Build.Reason'], 'PullRequest')
 
-#       - bash: |
-#           while read bucket_src;
-#           do
+      - bash: |
+          while read bucket_src;
+          do
 
-#             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-#             test -z "${PREFIX}" || bucket=${PREFIX}-${bucket};
+            bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
+            test -z "${PREFIX}" || bucket=${PREFIX}-${bucket};
 
-#             if gsutil ls gs://$bucket;
-#             then
-#               echo "[i] $bucket exists."
-#             else
-#               echo "[i] $bucket doesn't exists or is not accesible.";
-#             fi
-#           done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
-#         displayName: Check if the buckets exists
+            if gsutil ls gs://$bucket;
+            then
+              echo "[i] $bucket exists."
+            else
+              echo "[i] $bucket doesn't exists or is not accesible.";
+            fi
+          done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
+        displayName: Check if the buckets exists
 
-#       - bash: |
-#           while read bucket_src;
-#           do
+      - bash: |
+          while read bucket_src;
+          do
 
-#             bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
-#             test -z "${PREFIX}" || bucket=${PREFIX}-${bucket};
+            bucket=$(sed 's#.*/\([a-z]\+\)/\(.*\)$#\1-\2#' <<< ${bucket_src});
+            test -z "${PREFIX}" || bucket=${PREFIX}-${bucket};
 
-#             if test -f ${bucket_src}/.ci/delete-extra-files;
-#             then
-#               echo "Sync deleting extra files not present in origin.";
-#               echo "  Source        ${bucket_src}";
-#               echo "  Destination   ${bucket}";
-#               gsutil rsync -R -J -C -c -d ${bucket_src}/ gs://${bucket}
-#             else
-#               echo "Sync without deleting extra files not present in remote."
-#               echo "  Source        ${bucket_src}";
-#               echo "  Destination   ${bucket}";
-#               gsutil rsync -R -J -C -c ${bucket_src}/ gs://${bucket}
-#             fi
-#           done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
-#         displayName: Update buckets contents
+            if test -f ${bucket_src}/.ci/delete-extra-files;
+            then
+              echo "Sync deleting extra files not present in origin.";
+              echo "  Source        ${bucket_src}";
+              echo "  Destination   ${bucket}";
+              gsutil rsync -R -J -C -c -d ${bucket_src}/ gs://${bucket}
+            else
+              echo "Sync without deleting extra files not present in remote."
+              echo "  Source        ${bucket_src}";
+              echo "  Destination   ${bucket}";
+              gsutil rsync -R -J -C -c ${bucket_src}/ gs://${bucket}
+            fi
+          done < <(find $(env.paths.storage) -maxdepth 1 -mindepth 1 -type d)
+        displayName: Update buckets contents
 
 - stage: Kubernetes
   displayName: Kubernetes
@@ -547,20 +547,6 @@ stages:
         name: gkeManifest
         condition: eq(variables['k8sManifests.exists'],'true')
         displayName: Check GKE infrastructure manifests
-
-  # - job: CheckGkeCluster
-  #   displayName: Preview changes
-  #   dependsOn:
-  #     - CheckGkeManifests
-  #   condition: >
-  #     eq(dependencies.CheckGkeManifests.outputs['gkeManifest.exists'],'true')
-  #   variables:
-  #     - name: GKE_MANIFEST
-  #       value: $[ dependencies.CheckGkeManifests.outputs['gkeManifest.path'] ]
-  #   steps:
-
-  #     - script: printenv
-  #     - script: echo ${GKE_MANIFEST}
 
   - job: CheckGkeCluster
     displayName: Check GKE cluster
