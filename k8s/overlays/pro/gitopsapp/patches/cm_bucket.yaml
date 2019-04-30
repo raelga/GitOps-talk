@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitopsapp
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        env:
+        - name: BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: gitopsapp
+              key: bucket
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitopsapp
+data:
+  bucket: storage.googleapis.com/pro-statics-bucket
