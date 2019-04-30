@@ -508,7 +508,7 @@ stages:
   displayName: Kubernetes
   jobs:
 
-  - job: CheckKubernetesManifests
+  - job: CheckGkeManifests
     displayName: Check manifests
     steps:
 
@@ -548,18 +548,32 @@ stages:
         condition: eq(variables['k8sManifests.exists'],'true')
         displayName: Check GKE infrastructure manifests
 
-  - job: CheckCluster
+  # - job: CheckGkeCluster
+  #   displayName: Preview changes
+  #   dependsOn:
+  #     - CheckGkeManifests
+  #   condition: >
+  #     eq(dependencies.CheckGkeManifests.outputs['gkeManifest.exists'],'true')
+  #   variables:
+  #     - name: GKE_MANIFEST
+  #       value: $[ dependencies.CheckGkeManifests.outputs['gkeManifest.path'] ]
+  #   steps:
+
+  #     - script: printenv
+  #     - script: echo ${GKE_MANIFEST}
+
+  - job: CheckGkeCluster
     displayName: Check GKE cluster
     container: gitopsci
-    dependsOn: CheckKubernetesManifests
+    dependsOn: CheckGkeManifests
     condition: >
       and(
-        eq(dependencies.CheckKubernetesManifests.outputs['gkeManifest.exists'],'true'),
-        eq(dependencies.CheckKubernetesManifests.outputs['k8sManifests.exists'],'true')
+        eq(dependencies.CheckGkeManifests.outputs['gkeManifest.exists'],'true'),
+        eq(dependencies.CheckGkeManifests.outputs['k8sManifests.exists'],'true')
       )
     variables:
-      - name: env.gkeManifest
-        value: $[ dependencies.CheckClusterManifests.outputs['gkeManifest.path'] ]
+      - name: GKE_MANIFEST
+        value: $[ dependencies.CheckGkeManifests.outputs['gkeManifest.path'] ]
     steps:
 
       - script: >
@@ -581,12 +595,19 @@ stages:
         condition: eq(variables['Build.Reason'], 'PullRequest')
 
       - bash: |
-          deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< $(env.gkeManifest));
+          test -f "${GKE_MANIFEST}" \
+            || { echo "[!] ${GKE_MANIFEST} file not found."; exit 1; }
+
+          deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${GKE_MANIFEST});
+
+          test -n "${deployment}" \
+            || { echo "[!] Unable to obtain the deployment name."; exit 1; }
+
           test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
-          echo "[i] GKE deployment name is ${deployment}";
+
           echo "##vso[task.setvariable variable=name;isOutput=true]${deployment}";
         name: gkeDeployment
-        displayName: Getting the GKE cluster deployment name
+        displayName: Get the GKE cluster deployment name
 
       - bash: |
           GCLOUD_CLUSTER_NAME=$(gcloud deployment-manager deployments \
@@ -626,7 +647,7 @@ stages:
           echo "##vso[task.setvariable variable=location;isOutput=true]${GCLOUD_CLUSTER_LOCATION}";
           echo "##vso[task.setvariable variable=locationFlag;isOutput=true]${GCLOUD_CLUSTER_LOCATION_FLAG}";
         name: gkeCluster
-        displayName: Getting GKE cluster info
+        displayName: Get GKE cluster info
 
       - bash: |
           if gcloud container clusters get-credentials $(gkeCluster.name) \
@@ -646,15 +667,13 @@ stages:
     displayName: Preview changes
     container: gitopsci
     dependsOn:
-      - CheckKubernetesManifests
-      - CheckCluster
-    condition: >
-      eq(dependencies.CheckClusterManifests.outputs['gkeManifest.exists'],'true')
+      - CheckGkeManifests
+      - CheckGkeCluster
     variables:
-      - name: env.gkeName
-        value: $[ dependencies.CheckCluster.outputs['gkeCluster.name'] ]
-      - name: env.gkeLocationFlag
-        value: $[ dependencies.CheckCluster.outputs['gkeCluster.locationFlag'] ]
+      - name: GKE_CLUSTER_NAME
+        value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.name'] ]
+      - name: GKE_CLUSTER_LOCATION_FLAG
+        value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.locationFlag'] ]
     steps:
 
       - script: >
@@ -671,26 +690,40 @@ stages:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
       - bash: >
-          gcloud container clusters get-credentials $(gkeCluster.name) $(gkeCluster.locationFlag)
+          gcloud container clusters get-credentials \
+            ${GKE_CLUSTER_NAME} ${GKE_CLUSTER_LOCATION_FLAG}
         displayName: Get GKE cluster credentials
 
       - bash: >
-          kubectl diff --kustomize='$(env.paths.k8s)'
+          kubectl apply --dry-run -k '$(env.paths.k8s)'
+        displayName: Check kubernetes manifests
+
+      - bash: |
+          if kubectl diff -k $(env.paths.k8s);
+          then
+            echo "[i] No changes detected, skipping apply job."
+            echo "##vso[task.setvariable variable=changes;isOutput=true]false";
+          else
+            echo "[i] Changes detected against the deployed resources."
+            echo "##vso[task.setvariable variable=changes;isOutput=true]true";
+          fi
+        name: k8sDiff
+        displayName: Preview kubernetes manifests changes
 
   - job: KubernetesApply
     displayName: Apply changes
     container: gitopsci
     dependsOn:
-      - CheckKubernetesManifests
-      - CheckCluster
+      - CheckGkeManifests
+      - CheckGkeCluster
       - KubernetesDiff
     condition: >
-      eq(dependencies.CheckClusterManifests.outputs['gkeManifest.exists'],'true')
+      eq(dependencies.KubernetesDiff.outputs['k8sDiff.changes'],'true')
     variables:
-      - name: env.gkeName
-        value: $[ dependencies.CheckCluster.outputs['gkeCluster.name'] ]
-      - name: env.gkeLocationFlag
-        value: $[ dependencies.CheckCluster.outputs['gkeCluster.locationFlag'] ]
+      - name: GKE_CLUSTER_NAME
+        value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.name'] ]
+      - name: GKE_CLUSTER_LOCATION_FLAG
+        value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.locationFlag'] ]
     steps:
 
       - script: >
@@ -707,8 +740,10 @@ stages:
           GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
 
       - bash: >
-          gcloud container clusters get-credentials $(gkeCluster.name) $(gkeCluster.locationFlag)
+          gcloud container clusters get-credentials \
+            ${GKE_CLUSTER_NAME} ${GKE_CLUSTER_LOCATION_FLAG}
         displayName: Get GKE cluster credentials
 
       - bash: >
           kubectl apply --kustomize='$(env.paths.k8s)'
+        displayName: Apply kubernetes manifests
