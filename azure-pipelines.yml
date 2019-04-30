@@ -508,17 +508,19 @@ stages:
   displayName: Kubernetes
   jobs:
 
-  - job: CheckClusterManifests
-    displayName: Check GKE manifests
+  - job: CheckKubernetesManifests
+    displayName: Check manifests
     steps:
 
       - bash: |
-          test -d $(env.paths.k8s) \
-            || {
-              echo "[i] $(env.paths.k8s) folder not found, skipping kubernetes stage";
-            }
-          # Outputs
-          echo "##vso[task.setvariable variable=exists;isOutput=true]true"
+          if test -d $(env.paths.k8s);
+          then
+            echo "[i] $(env.paths.k8s) found";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]true"
+          else
+            echo "[i] $(env.paths.k8s) folder not found, skipping kubernetes stage";
+            echo "##vso[task.setvariable variable=exists;isOutput=true]false";
+          fi
         name: k8sManifests
         displayName: Check k8s resources manifests
 
@@ -540,19 +542,20 @@ stages:
             echo "[i] GKE cluster deployment manifest found at ${manifest}";
             # Outputs
             echo "##vso[task.setvariable variable=exists;isOutput=true]true"
-            echo "##vso[task.setvariable variable=Path;isOutput=true]${manifest}"
+            echo "##vso[task.setvariable variable=path;isOutput=true]${manifest}"
           fi
         name: gkeManifest
+        condition: eq(variables['k8sManifests.exists'],'true')
         displayName: Check GKE infrastructure manifests
 
   - job: CheckCluster
     displayName: Check GKE cluster
     container: gitopsci
-    dependsOn: CheckClusterManifests
+    dependsOn: CheckKubernetesManifests
     condition: >
       and(
-        eq(dependencies.CheckClusterManifests.outputs['gkeManifest.exists'],'true'),
-        eq(dependencies.CheckClusterManifests.outputs['k8sManifests.exists'],'true')
+        eq(dependencies.CheckKubernetesManifests.outputs['gkeManifest.exists'],'true'),
+        eq(dependencies.CheckKubernetesManifests.outputs['k8sManifests.exists'],'true')
       )
     variables:
       - name: env.gkeManifest
@@ -634,15 +637,16 @@ stages:
             echo "[!] Unable to retrieve cluster credentials.";
             exit 1;
           fi
+
           kubectl cluster-info \
-            || {echo "[!] Unable to connect to the GKE cluster."; exit 1; }
+            || { echo "[!] Unable to connect to the GKE cluster."; exit 1; }
         displayName: Check GKE cluster credentials
 
   - job: KubernetesDiff
     displayName: Preview changes
     container: gitopsci
     dependsOn:
-      - CheckClusterManifests
+      - CheckKubernetesManifests
       - CheckCluster
     condition: >
       eq(dependencies.CheckClusterManifests.outputs['gkeManifest.exists'],'true')
