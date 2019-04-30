@@ -8,7 +8,7 @@ name: $(BuildID)
 # Enable Pull request validation triggers
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#pr-trigger
 pr:
-  #autoCancel: false # indicates whether additional pushes to a PR should cancel in-progress runs for the same PR.
+  autoCancel: false # indicates whether additional pushes to a PR should cancel in-progress runs for the same PR.
   branches:
     include: # branch names which will trigger a build
       - stg
@@ -29,6 +29,7 @@ pr:
 # Enable Continuous integration (CI)
 # https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#push-trigger
 trigger:
+  batch: true # batch changes if true, start a new build for every push if false
   branches:
     include: # branch names which will trigger a build
       - base
