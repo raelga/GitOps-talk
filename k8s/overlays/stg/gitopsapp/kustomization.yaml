@@ -12,6 +12,3 @@ patches:
 images:
 - name: rvazquez/gitops-demo-front
   newTag: "0.2.0"
-
-commonLabels:
-  version: v2
