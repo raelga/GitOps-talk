@@ -650,6 +650,23 @@ stages:
         displayName: Get GKE cluster info
 
       - bash: |
+          GITHUB_API_PR_COMMENTS_URL="https://api.github.com/repos/${BUILD_REPOSITORY_NAME}/issues/${SYSTEM_PULLREQUEST_PULLREQUESTNUMBER}/comments"
+          if curl \
+            -s "${GITHUB_API_PR_COMMENTS_URL}" \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -X POST \
+            -d "{ \"body\": \"Traefik URL http://${GCLOUD_CLUSTER_TRAEFIK_DNS}:8080/\" }";
+          then
+            echo "[i] GitHub message sent!";
+          else
+            echo "[i] Unable to send GitHub message, skipping.";
+          fi
+        displayName: Add message to GitHub pull request
+        condition: eq(variables['Build.Reason'], 'PullRequest')
+        env:
+          GITHUB_TOKEN: $(GITHUB_TOKEN)
+
+      - bash: |
           if gcloud container clusters get-credentials $(gkeCluster.name) \
             $(gkeCluster.locationFlag);
           then
