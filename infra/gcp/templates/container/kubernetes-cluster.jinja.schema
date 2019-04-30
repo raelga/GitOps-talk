@@ -128,7 +128,7 @@ properties:
         description: The DNS zone where the dns recordset will be registered.
         default:
           name: gitops-zone
-          fqdn: gitops.gcp.rael.io.
+          fqdn: gitops.gcp.rael.io
         required:
           - name
           - fqdn
