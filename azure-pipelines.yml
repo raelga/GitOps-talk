@@ -676,3 +676,39 @@ stages:
 
       - bash: >
           kubectl diff --kustomize='$(env.paths.k8s)'
+
+  - job: KubernetesApply
+    displayName: Apply changes
+    container: gitopsci
+    dependsOn:
+      - CheckKubernetesManifests
+      - CheckCluster
+      - KubernetesDiff
+    condition: >
+      eq(dependencies.CheckClusterManifests.outputs['gkeManifest.exists'],'true')
+    variables:
+      - name: env.gkeName
+        value: $[ dependencies.CheckCluster.outputs['gkeCluster.name'] ]
+      - name: env.gkeLocationFlag
+        value: $[ dependencies.CheckCluster.outputs['gkeCluster.locationFlag'] ]
+    steps:
+
+      - script: >
+          gcloud auth activate-service-account \
+            --key-file <(echo ${GCLOUD_SERVICE_ACCOUNT} | base64 -d)
+        displayName: Activate Google Cloud SDK service account
+        env:
+          GCLOUD_SERVICE_ACCOUNT: $(GCLOUD_SERVICE_ACCOUNT)
+
+      - script: >
+          gcloud config set project ${GCLOUD_PROJECT_ID}
+        displayName: Activate Google Cloud SDK project
+        env:
+          GCLOUD_PROJECT_ID: $(GCLOUD_PROJECT_ID)
+
+      - bash: >
+          gcloud container clusters get-credentials $(gkeCluster.name) $(gkeCluster.locationFlag)
+        displayName: Get GKE cluster credentials
+
+      - bash: >
+          kubectl apply --kustomize='$(env.paths.k8s)'
