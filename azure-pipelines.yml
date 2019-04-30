@@ -513,6 +513,16 @@ stages:
     steps:
 
       - bash: |
+          test -d $(env.paths.k8s) \
+            || {
+              echo "[i] $(env.paths.k8s) folder not found, skipping kubernetes stage";
+            }
+          # Outputs
+          echo "##vso[task.setvariable variable=exists;isOutput=true]true"
+        name: k8sManifests
+        displayName: Check k8s resources manifests
+
+      - bash: |
           GKE_MANIFEST_COUNT=$( \
             egrep -rlo '^\s+- name.\s+cluster-name' $(env.paths.infra) | wc -l
           );
@@ -532,19 +542,21 @@ stages:
             echo "##vso[task.setvariable variable=exists;isOutput=true]true"
             echo "##vso[task.setvariable variable=Path;isOutput=true]${manifest}"
           fi
-        name: k8sManifest
+        name: gkeManifest
         displayName: Check GKE infrastructure manifests
-
 
   - job: CheckCluster
     displayName: Check GKE cluster
     container: gitopsci
     dependsOn: CheckClusterManifests
     condition: >
-      eq(dependencies.CheckClusterManifests.outputs['k8sManifest.exists'],'true')
+      and(
+        eq(dependencies.CheckClusterManifests.outputs['gkeManifest.exists'],'true'),
+        eq(dependencies.CheckClusterManifests.outputs['k8sManifests.exists'],'true')
+      )
     variables:
       - name: env.gkeManifest
-        value: $[ dependencies.CheckClusterManifests.outputs['k8sManifest.path'] ]
+        value: $[ dependencies.CheckClusterManifests.outputs['gkeManifest.path'] ]
     steps:
 
       - script: >
