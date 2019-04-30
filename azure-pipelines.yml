@@ -252,8 +252,8 @@ stages:
             deployment=$(sed 's#.*/\([a-z]\+\)/\(.*\).yaml$#\1-\2#' <<< ${manifest});
             test -z "${PREFIX:-}" || deployment=${PREFIX}-${deployment};
 
-            if test ! -z $(gcloud deployment-manager deployments list \
-              --format="value(name)" --filter="name:${deployment}");
+            if test ! -z "$(gcloud deployment-manager deployments list \
+              --format="value(name)" --filter="name=${deployment}")";
             then
               echo "[i] ${deployment} already exists."
               gcloud deployment-manager deployments describe ${deployment};
