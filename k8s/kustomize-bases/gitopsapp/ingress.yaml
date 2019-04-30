@@ -3,12 +3,12 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: gitopsapp
+  name: gitopsapp-traefik
   annotations:
     kubernetes.io/ingress.class: traefik
 spec:
   rules:
-  - host: demo.stg-gke.gitops.gcp.rael.io
+  - host: gitops.GKE_TRAEFIK_DNS
     http:
       paths:
       - path: /
