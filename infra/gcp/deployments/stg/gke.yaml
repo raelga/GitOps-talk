@@ -1,0 +1,28 @@
+imports:
+  - path: ../../templates/container/kubernetes-cluster.jinja
+  - path: ../../templates/iam/service-account.jinja
+
+resources:
+  - name: kubernetes-cluster
+    type: ../../templates/container/kubernetes-cluster.jinja
+    properties:
+      type: LOCAL
+      network:
+        name: base-net
+        subnet: gke-stg-sn
+        zone: europe-west1-b
+      nodePools:
+        - name: compute-pad-g1s
+          machineType: g1-small
+
+outputs:
+  - name: cluster-name
+    value: $(ref.kubernetes-cluster.name)
+  - name: cluster-location
+    value: $(ref.kubernetes-cluster.location)
+  - name: cluster-endpoint
+    value: $(ref.kubernetes-cluster.endpoint)
+  - name: cluster-traefik-lb-address
+    value: $(ref.kubernetes-cluster.traefik-lb-address)
+  - name: cluster-traefik-lb-dns
+    value: $(ref.kubernetes-cluster.traefik-lb-dns)
