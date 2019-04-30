@@ -12,9 +12,10 @@ resources:
         subnet: gke-pro-sn
         zone: europe-west1
       nodePools:
-        - name: compute-pad-g1s
-          machineType: g1-small
+        - name: compute-pad-n1s1
+          machineType: n1-standard-1
           minNodeCount: 2
+          preemtible: false
 
 outputs:
   - name: cluster-name
