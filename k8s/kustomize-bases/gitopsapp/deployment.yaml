@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitopsapp
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        deployment: gitopsapp
+    spec:
+      containers:
+      - name: app
+        image: rvazquez/gitops-demo-front:0.1.0
+        ports:
+        - name: app
+          containerPort: 3000
+        resources:
+          requests:
+            cpu: 50m
+            memory: 50M
+          limits:
+            cpu: 250m
+            memory: 100M
