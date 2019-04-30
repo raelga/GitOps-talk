@@ -22,6 +22,7 @@ resources:
           # preemptible: true (default value)
           # autoscaling: true (default value)
           # maxNodeCount: 5 (default value)
+          # minNodeCount: 1 (default value)
 
 outputs:
   - name: cluster-name
