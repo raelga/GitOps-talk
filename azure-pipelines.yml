@@ -622,6 +622,18 @@ stages:
             exit 1;
           fi
 
+          GCLOUD_CLUSTER_TRAEFIK_DNS=$(gcloud deployment-manager deployments \
+            describe $(gkeDeployment.name) \
+            --format='get[](outputs.name.cluster-traefik-lb-dns.finalValue)' \
+          );
+          if test -n "${GCLOUD_CLUSTER_TRAEFIK_DNS}";
+          then
+            echo "[i] GCLOUD_CLUSTER_TRAEFIK_DNS set to ${GCLOUD_CLUSTER_TRAEFIK_DNS}";
+          else
+            echo "[i] Unable to get `cluster-traefik-lb-dns` output from $(gkeDeployment.name) deployment.";
+            exit 1;
+          fi
+
           GCLOUD_CLUSTER_LOCATION=$(gcloud deployment-manager deployments \
             describe $(gkeDeployment.name) \
             --format='get[](outputs.name.cluster-location.finalValue)'
@@ -646,6 +658,7 @@ stages:
           echo "##vso[task.setvariable variable=name;isOutput=true]${GCLOUD_CLUSTER_NAME}";
           echo "##vso[task.setvariable variable=location;isOutput=true]${GCLOUD_CLUSTER_LOCATION}";
           echo "##vso[task.setvariable variable=locationFlag;isOutput=true]${GCLOUD_CLUSTER_LOCATION_FLAG}";
+          echo "##vso[task.setvariable variable=traefikDns;isOutput=true]${GCLOUD_CLUSTER_TRAEFIK_DNS}";
         name: gkeCluster
         displayName: Get GKE cluster info
 
@@ -674,6 +687,8 @@ stages:
         value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.name'] ]
       - name: GKE_CLUSTER_LOCATION_FLAG
         value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.locationFlag'] ]
+      - name: GKE_TRAEFIK_DNS
+        value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.traefikDns'] ]
     steps:
 
       - script: >
@@ -693,6 +708,15 @@ stages:
           gcloud container clusters get-credentials \
             ${GKE_CLUSTER_NAME} ${GKE_CLUSTER_LOCATION_FLAG}
         displayName: Get GKE cluster credentials
+
+      - bash: |
+          echo "[i] Cluster traefik DNS is ${GKE_TRAEFIK_DNS}";
+          while read manifest;
+          do
+            echo "[i] Updating ${manifest} GKE_TRAEFIK_DNS string.";
+            sed -i "s/GKE_TRAEFIK_DNS/${GKE_TRAEFIK_DNS}/g" ${manifest};
+          done < <(egrep -lrn 'host:.*GKE_TRAEFIK_DNS' k8s/);
+        displayName: Update GKE_TRAEFIK_DNS string in k8s manifests
 
       - bash: >
           kubectl apply --dry-run -k '$(env.paths.k8s)'
@@ -724,6 +748,8 @@ stages:
         value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.name'] ]
       - name: GKE_CLUSTER_LOCATION_FLAG
         value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.locationFlag'] ]
+      - name: GKE_TRAEFIK_DNS
+        value: $[ dependencies.CheckGkeCluster.outputs['gkeCluster.traefikDns'] ]
     steps:
 
       - script: >
@@ -743,6 +769,15 @@ stages:
           gcloud container clusters get-credentials \
             ${GKE_CLUSTER_NAME} ${GKE_CLUSTER_LOCATION_FLAG}
         displayName: Get GKE cluster credentials
+
+      - bash: |
+          echo "[i] Cluster traefik DNS is ${GKE_TRAEFIK_DNS}";
+          while read manifest;
+          do
+            echo "[i] Updating ${manifest} GKE_TRAEFIK_DNS string.";
+            sed -i "s/GKE_TRAEFIK_DNS/${GKE_TRAEFIK_DNS}/g" ${manifest};
+          done < <(egrep -lrn 'host:.*GKE_TRAEFIK_DNS' k8s/);
+        displayName: Update GKE_TRAEFIK_DNS string in k8s manifests
 
       - bash: >
           kubectl apply --kustomize='$(env.paths.k8s)'
